@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Entorno
+.env
+
+# BBDD local
+*.db
+
+# Archivos de audio subidos (no deben ir al repo)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Editor
+.vscode/
+.idea/
