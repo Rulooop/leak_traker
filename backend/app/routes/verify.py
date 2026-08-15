@@ -1,25 +1,31 @@
-import shutil
 import tempfile
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, Request, UploadFile
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
 from ..database import get_db
+from ..files import read_and_check_size
+from ..rate_limit import limiter
+from ..security import require_api_key
 from ..watermark import extract_watermark
 from .webhook import send_alert
 
 router = APIRouter()
 
 
-@router.post("/verify", response_model=schemas.VerifyResult)
+@router.post("/verify", response_model=schemas.VerifyResult, dependencies=[Depends(require_api_key)])
+@limiter.limit("10/minute")
 async def verify_suspect_file(
+    request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
 ):
+    file_bytes = await read_and_check_size(file)
+
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-        shutil.copyfileobj(file.file, tmp)
+        tmp.write(file_bytes)
         tmp_path = Path(tmp.name)
 
     try:

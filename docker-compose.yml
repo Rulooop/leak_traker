@@ -21,6 +21,7 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg2://leaktracker:change_me@db:5432/leaktracker
       ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+      API_KEY: ${API_KEY:?la variable API_KEY es obligatoria, defínela en tu .env}
     volumes:
       - ./backend/uploads:/app/uploads
     ports:

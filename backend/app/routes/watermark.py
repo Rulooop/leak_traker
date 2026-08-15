@@ -1,12 +1,14 @@
 import random
-import shutil
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
 from ..database import get_db
+from ..files import read_and_check_size
+from ..rate_limit import limiter
+from ..security import require_api_key
 from ..watermark import embed_watermark
 
 router = APIRouter()
@@ -25,8 +27,10 @@ def _generate_unique_code(db: Session) -> int:
     raise HTTPException(status_code=500, detail="No se pudo generar un código único, inténtalo de nuevo.")
 
 
-@router.post("/watermark", response_model=schemas.WatermarkedFileOut)
+@router.post("/watermark", response_model=schemas.WatermarkedFileOut, dependencies=[Depends(require_api_key)])
+@limiter.limit("10/minute")
 async def create_watermarked_file(
+    request: Request,
     title: str = Form(...),
     artist: str = Form(...),
     recipient_id: int = Form(...),
@@ -40,13 +44,17 @@ async def create_watermarked_file(
     if not file.filename.lower().endswith(".wav"):
         raise HTTPException(status_code=400, detail="Por ahora solo se admiten archivos .wav")
 
+    file_bytes = await read_and_check_size(file)
+
     track = models.Track(title=title, artist=artist)
     db.add(track)
     db.flush()  # para obtener track.id sin hacer commit todavía
 
+    # El nombre del archivo lo generamos NOSOTROS a partir del id — nunca usamos
+    # el nombre que manda el cliente, así evitamos problemas de path traversal
+    # (alguien mandando un filename tipo "../../etc/passwd").
     input_path = UPLOAD_DIR / f"original_{track.id}.wav"
-    with input_path.open("wb") as f:
-        shutil.copyfileobj(file.file, f)
+    input_path.write_bytes(file_bytes)
 
     code = _generate_unique_code(db)
     output_path = UPLOAD_DIR / f"watermarked_{track.id}_{recipient_id}_{code}.wav"
