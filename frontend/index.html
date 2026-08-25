@@ -279,6 +279,23 @@ async function api(path, options = {}){
   return contentType.includes('application/json') ? res.json() : res;
 }
 
+async function downloadWatermarkedFile(id, filename){
+  try{
+    const res = await api(`/watermarked-files/${id}/download`);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }catch(e){
+    showError(e.message);
+  }
+}
+
 function showError(msg){
   const el = document.createElement('div');
   el.className = 'banner';
@@ -417,12 +434,16 @@ async function renderDashboard(el){
               <td>${f.track_title}</td>
               <td>${f.recipient_name}</td>
               <td class="mono">${f.code}</td>
-              <td><a href="${state.apiUrl}/watermarked-files/${f.id}/download" target="_blank" style="color:var(--amber); font-size:12px; font-weight:600;">Descargar ↓</a></td>
+              <td><button class="download-btn" data-id="${f.id}" data-filename="${f.track_title}_${f.recipient_name}.wav" style="background:none; border:none; color:var(--amber); font-size:12px; font-weight:600; padding:0; cursor:pointer;">Descargar ↓</button></td>
             </tr>`).join('')}
         </tbody>
       </table>`}
     </div>
   `;
+
+  el.querySelectorAll('.download-btn').forEach(btn => {
+    btn.addEventListener('click', () => downloadWatermarkedFile(btn.dataset.id, btn.dataset.filename));
+  });
 }
 
 /* ---------- vista: nueva canción ---------- */
@@ -472,13 +493,16 @@ async function renderNewTrack(el){
     btn.disabled = true;
     try{
       const result = await api('/watermark', { method: 'POST', body: form });
+      const recipientName = state.recipients.find(r => String(r.id) === String(recipientId))?.name || '';
+      const filename = `${title}_${recipientName}.wav`;
       document.getElementById('ntResult').innerHTML = `
         <div class="result-panel clean">
           <div class="result-title">Copia generada — código ${result.code}</div>
           <div class="result-detail">
-            <a href="${state.apiUrl}/watermarked-files/${result.id}/download" target="_blank" style="color:var(--teal); font-weight:600;">Descargar el archivo marcado ↓</a>
+            <button class="download-btn" style="background:none; border:none; color:var(--teal); font-weight:600; padding:0; cursor:pointer; font-size:13px;">Descargar el archivo marcado ↓</button>
           </div>
         </div>`;
+      document.querySelector('#ntResult .download-btn').addEventListener('click', () => downloadWatermarkedFile(result.id, filename));
     }catch(e){
       showError(e.message);
     }finally{

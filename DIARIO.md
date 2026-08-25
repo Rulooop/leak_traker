@@ -74,6 +74,29 @@ el despliegue en producción.
 
 ---
 
+## 26 de agosto — Entorno local y fix de descargas
+
+**Entorno con Docker.** Creé el `.env` local a partir de `.env.example`, con
+una `API_KEY` generada con `openssl rand -hex 32` y `ALLOWED_ORIGINS=*`, y
+levanté los 3 servicios (`db`, `backend`, `frontend`) con `docker-compose up
+-d`, comprobando que los tres arrancan bien y responden correctamente.
+
+**Audio de prueba.** Generé un `ejemplo.wav` (mono, 44.1kHz, 5 segundos, tono
+de 440Hz) por consola para poder probar el flujo de watermark/verify a mano.
+No se sube al repo — es solo un archivo de prueba local, no forma parte del
+proyecto.
+
+**Bug de descarga corregido.** Los enlaces "Descargar" del archivo marcado
+(en el dashboard y tras generar una copia nueva) eran `<a href="...">`
+normales, así que el navegador no mandaba la cabecera `X-API-Key` al pedir
+`/watermarked-files/{id}/download`, y la API respondía 401. Se sustituyeron
+por botones que llaman a una función `downloadWatermarkedFile()`: hace el
+`fetch` autenticado con la función `api()` ya existente, convierte la
+respuesta en `blob` y fuerza la descarga con un enlace temporal generado con
+`URL.createObjectURL()`.
+
+---
+
 ## Pendiente para la próxima sesión
 
 - Conectar el webhook real a Slack/Telegram.
