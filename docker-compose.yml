@@ -22,10 +22,21 @@ services:
       DATABASE_URL: postgresql+psycopg2://leaktracker:change_me@db:5432/leaktracker
       ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
       API_KEY: ${API_KEY:?la variable API_KEY es obligatoria, defínela en tu .env}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-*}
     volumes:
       - ./backend/uploads:/app/uploads
     ports:
       - "8000:8000"
+
+  frontend:
+    image: nginx:alpine
+    restart: unless-stopped
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+    ports:
+      - "8080:80"
 
 volumes:
   db_data:

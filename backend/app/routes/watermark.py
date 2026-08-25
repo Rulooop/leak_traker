@@ -2,6 +2,7 @@ import random
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
@@ -72,3 +73,20 @@ async def create_watermarked_file(
     db.refresh(watermarked_file)
 
     return watermarked_file
+
+
+@router.get("/watermarked-files/{file_id}/download", dependencies=[Depends(require_api_key)])
+def download_watermarked_file(file_id: int, db: Session = Depends(get_db)):
+    watermarked_file = db.query(models.WatermarkedFile).get(file_id)
+    if not watermarked_file:
+        raise HTTPException(status_code=404, detail="Archivo no encontrado.")
+
+    path = Path(watermarked_file.file_path)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="El archivo ya no existe en el servidor.")
+
+    return FileResponse(
+        path,
+        media_type="audio/wav",
+        filename=f"{watermarked_file.track.title}_{watermarked_file.recipient.name}.wav",
+    )
