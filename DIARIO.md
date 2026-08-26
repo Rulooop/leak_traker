@@ -95,6 +95,9 @@ por botones que llaman a una función `downloadWatermarkedFile()`: hace el
 respuesta en `blob` y fuerza la descarga con un enlace temporal generado con
 `URL.createObjectURL()`.
 
+**Verificación de la API key.** Confirmé que la API rechaza la clave antigua
+(401) y acepta solo la nueva generada con `openssl rand -hex 32`.
+
 ---
 
 ## Pendiente para la próxima sesión
