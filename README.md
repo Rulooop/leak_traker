@@ -14,30 +14,35 @@ Sistema para rastrear filtraciones de canciones inéditas mediante marcas de agu
 ## Arquitectura
 
 ```
-frontend (HTML simple)
+frontend (dashboard de una sola página, HTML/CSS/JS sin frameworks)
       │
       ▼
 backend (FastAPI)
-   ├── /watermark   → incrusta el código y guarda el registro
-   ├── /verify       → extrae el código de un archivo sospechoso
-   └── /webhook-test → dispara una alerta de prueba
+   ├── /watermark                          → incrusta el código y guarda el registro
+   ├── /verify                             → extrae el código de un archivo sospechoso y dispara alerta si hay match
+   ├── /recipients                         → crear y listar destinatarios
+   ├── /stats /tracks /watermarked-files   → endpoints de solo lectura que alimentan el dashboard
+   ├── /leak-detections                    → historial de verificaciones
+   ├── /watermarked-files/{id}/download    → descarga autenticada de una copia marcada
+   └── /webhook-test                       → dispara una alerta de prueba
       │
       ▼
-BBDD (SQLite en dev / PostgreSQL en producción)
+BBDD (SQLite en dev / PostgreSQL en producción, vía docker-compose)
 ```
 
 ## Estado de este repo
 
-Esto es el **esqueleto** del proyecto, no el trabajo terminado. Contiene:
+Ya no es solo el esqueleto inicial: hay un backend funcional con panel web propio, probado en local con Docker. Sigue faltando el despliegue real y cerrar del todo la integración de alertas. Contiene:
 
 - [x] Estructura de carpetas
 - [x] Modelo de datos (4 tablas)
 - [x] Prototipo funcional de watermark inaudible (embed/extract con FSK en alta frecuencia)
-- [x] API mínima con FastAPI
+- [x] API completa con FastAPI (watermark, verify, recipients, dashboard, descarga de archivos)
 - [x] Autenticación por API key, límite de tamaño de archivo y rate limiting (ver "Seguridad" abajo)
-- [ ] Webhook real hacia Slack/Telegram (hay un stub a completar)
-- [ ] Frontend con más pulido visual
-- [ ] Despliegue en Hetzner con Docker
+- [x] Frontend propio (dashboard, alta de canciones, verificación, destinatarios, ajustes de conexión)
+- [x] `docker-compose.yml` probado en local: los 3 servicios (`db`, `backend`, `frontend`) arrancan y responden correctamente
+- [ ] Webhook probado de verdad contra un Slack/Telegram real (el código ya envía un POST con el formato de un Incoming Webhook de Slack, pero falta configurarlo y probarlo con una URL real — ver `backend/app/routes/webhook.py`)
+- [ ] Despliegue en Hetzner con Docker detrás de Caddy/nginx
 
 ## Seguridad
 
@@ -91,6 +96,25 @@ cuente la historia de cómo se construyó.
 
 ## Cómo arrancarlo en local
 
+### Opción A — con Docker Compose (recomendada, ya probada)
+
+```bash
+cp .env.example .env
+# Rellena API_KEY en el .env, por ejemplo con:
+#   openssl rand -hex 32
+# ALLOWED_ORIGINS puede dejarse como "*" en local.
+
+docker-compose up -d --build
+```
+
+Esto levanta 3 servicios: `db` (PostgreSQL), `backend` (FastAPI en el puerto
+`8000`) y `frontend` (nginx sirviendo el dashboard en el puerto `8080`).
+Comprueba que los tres están arriba con `docker-compose ps`. Abre
+http://localhost:8080 para el dashboard y http://localhost:8000/docs para la
+API por Swagger.
+
+### Opción B — backend suelto, sin Docker
+
 ```bash
 cd backend
 python -m venv venv
@@ -106,7 +130,8 @@ uvicorn app.main:app --reload
 Abre http://localhost:8000/docs para probar los endpoints desde Swagger — en
 cada petición tendrás que añadir la cabecera `X-API-Key` con el valor que
 hayas puesto arriba (Swagger tiene un botón "Authorize" para esto, o puedes
-añadirla a mano en cada request).
+añadirla a mano en cada request). Con esta opción el frontend (`frontend/index.html`)
+hay que abrirlo suelto y configurar la URL/API key desde su pantalla de "Ajustes".
 
 ## Probar el watermark por consola (sin la API)
 
@@ -118,9 +143,8 @@ python -m app.watermark extract ejemplo_marcado.wav
 
 ## Siguientes pasos sugeridos
 
-1. Completa `backend/app/routes/webhook.py` para que avise de verdad (Slack/Telegram).
-2. Cambia SQLite por PostgreSQL en `docker-compose.yml` para producción (ya está
-   preparado el `docker-compose.yml`, solo falta probarlo).
-3. Pule el frontend (ahora mismo es solo un panel funcional, sin mucho diseño).
-4. Despliega en un VPS de Hetzner con `docker-compose up -d` detrás de Caddy/nginx.
-5. Repasa la sección "Pendiente de securizar" del README y ve tachando puntos.
+1. Configura una URL real de Incoming Webhook de Slack/Telegram en
+   `ALERT_WEBHOOK_URL` y comprueba con `/webhook-test` (y con una filtración
+   real vía `/verify`) que la alerta llega de verdad.
+2. Despliega en un VPS de Hetzner con `docker-compose up -d` detrás de Caddy/nginx.
+3. Repasa la sección "Pendiente de securizar" del README y ve tachando puntos.
