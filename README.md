@@ -148,3 +148,6 @@ python -m app.watermark extract ejemplo_marcado.wav
    real vía `/verify`) que la alerta llega de verdad.
 2. Despliega en un VPS de Hetzner con `docker-compose up -d` detrás de Caddy/nginx.
 3. Repasa la sección "Pendiente de securizar" del README y ve tachando puntos.
+4. Implementa un escáner automático que busque filtraciones periódicamente en
+   fuentes externas (webs, foros) en vez de depender solo de la subida manual
+   a `/verify`.
