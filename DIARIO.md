@@ -100,8 +100,31 @@ respuesta en `blob` y fuerza la descarga con un enlace temporal generado con
 
 ---
 
+## 1 de septiembre — Alertas de Telegram conectadas
+
+**Reinstalación de Claude Code.** Tuve que reinstalar Claude Code tras un
+fallo antes de empezar la sesión.
+
+**Webhook real conectado.** Creé un bot de Telegram (@Trackerleakbot) con
+@BotFather y sustituí el webhook genérico por una llamada directa a la API
+de Telegram (`sendMessage`). El token y el `chat_id` viven en `.env`, no en
+el código.
+
+**Prueba end-to-end confirmada.** Probé el flujo completo dos veces: primero
+con `/webhook-test`, luego con un caso real (crear destinatario → generar
+copia marcada → "filtrarla" descargándola → subirla a `/verify`). En ambos
+casos la alerta llegó sola a Telegram al detectar la filtración, sin
+intervención manual.
+
+**Escáner automático, aplazado.** Decidí dejar como mejora futura (anotada
+en el README) un escáner que busque filtraciones periódicamente en fuentes
+externas (webs, foros), en vez de depender solo de la subida manual a
+`/verify`.
+
+---
+
 ## Pendiente para la próxima sesión
 
-- Conectar el webhook real a Slack/Telegram.
 - Desplegar en un VPS de Hetzner con el `docker-compose.yml` ya preparado.
 - Revisar los puntos de la lista "Pendiente de securizar" del README.
+- Implementar el escáner automático de filtraciones en fuentes externas.
