@@ -1,10 +1,5 @@
 """
-Envío de alertas cuando se detecta una filtración.
-
-Esto es un STUB a propósito: aquí es donde tienes que enganchar Slack,
-Telegram, Discord o lo que prefieras. Déjaselo a Claude como una tarea
-concreta: "completa send_alert() para que mande un mensaje a mi canal de
-Slack usando un webhook incoming", por ejemplo.
+Envío de alertas cuando se detecta una filtración, vía bot de Telegram.
 """
 
 import os
@@ -14,21 +9,27 @@ from fastapi import APIRouter
 
 router = APIRouter()
 
-WEBHOOK_URL = os.getenv("ALERT_WEBHOOK_URL")  # p.ej. un Incoming Webhook de Slack
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 
 def send_alert(message: str) -> bool:
-    """Envía 'message' al webhook configurado. Devuelve True si se envió correctamente."""
-    if not WEBHOOK_URL:
-        print(f"[ALERTA - sin webhook configurado] {message}")
+    """Envía 'message' al chat de Telegram configurado. Devuelve True si se envió correctamente."""
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        print(f"[ALERTA - Telegram sin configurar] {message}")
         return False
 
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     try:
-        response = httpx.post(WEBHOOK_URL, json={"text": message}, timeout=5.0)
+        response = httpx.post(
+            url,
+            json={"chat_id": TELEGRAM_CHAT_ID, "text": message},
+            timeout=5.0,
+        )
         response.raise_for_status()
         return True
     except httpx.HTTPError as exc:
-        print(f"[ALERTA] Error enviando webhook: {exc}")
+        print(f"[ALERTA] Error enviando mensaje a Telegram: {exc}")
         return False
 
 

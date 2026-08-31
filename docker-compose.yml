@@ -21,6 +21,8 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg2://leaktracker:change_me@db:5432/leaktracker
       ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
       API_KEY: ${API_KEY:?la variable API_KEY es obligatoria, defínela en tu .env}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-*}
     volumes:
