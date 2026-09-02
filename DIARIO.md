@@ -178,3 +178,5 @@ y recreé el contenedor del backend para que cogiera el cambio.
 
 - Revisar los puntos de la lista "Pendiente de securizar" del README.
 - Implementar el escáner automático de filtraciones en fuentes externas.
+- Añadir un login de verdad al frontend, para no depender de pegar la
+  `API_KEY` a mano en "Ajustes".

@@ -176,3 +176,5 @@ python -m app.watermark extract ejemplo_marcado.wav
 2. Implementa un escáner automático que busque filtraciones periódicamente en
    fuentes externas (webs, foros) en vez de depender solo de la subida manual
    a `/verify`.
+3. Añade un login de verdad (usuario/contraseña o similar) para no tener que
+   pegar la `API_KEY` a mano en los "Ajustes" del frontend cada vez.

@@ -184,6 +184,7 @@ la propia VM con **Cloudflare Tunnel**, sin coste de servidor:
 | Escáner automático de filtraciones en fuentes externas | Media | Aplazado a propósito (no lo pedía el enunciado); si se retoma, versión mínima con 1-2 fuentes con API oficial (YouTube/SoundCloud) + job programado, en vez de scraping genérico |
 | HTTPS en local | Baja | En producción ya lo da Cloudflare Tunnel; en desarrollo local sigue sin HTTPS |
 | Centralizar el rate limiting si hay varias réplicas del backend | Baja | Está en memoria por IP; solo relevante si se escala a más de una instancia (con una, como ahora, no es urgente) |
+| Login de verdad en el frontend (usuario/contraseña) | Media | Ahora mismo la autenticación es pegar la `API_KEY` a mano en "Ajustes"; un login evitaría tener que manejar la clave directamente en el navegador |
 
 ---
 
