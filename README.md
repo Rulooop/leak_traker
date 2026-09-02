@@ -104,12 +104,15 @@ a partir del nombre que manda quien sube el archivo. Esto evita ataques de
 definido `API_KEY` en el `.env`, la API responde con error 500 en vez de
 dejar los endpoints abiertos sin querer por un despiste de configuración.
 
+**Descarga de archivos marcados solo vía endpoint autenticado.** La carpeta
+`uploads/` no se sirve como estáticos (ni en el backend ni en el nginx del
+frontend, que solo monta `frontend/`): la única forma de descargar una copia
+marcada es `/watermarked-files/{id}/download`, protegido con `X-API-Key`.
+
 ### Pendiente de securizar (para seguir mejorando)
 
-- Los archivos de audio en `uploads/` se sirven tal cual desde el sistema de
-  ficheros si alguien conoce la ruta exacta — en producción convendría
-  servirlos solo a través de un endpoint autenticado, no como estáticos.
-- No hay HTTPS en local (sí en producción, vía Caddy/nginx delante).
+- No hay HTTPS en local (en producción sí, terminado en el borde de
+  Cloudflare por el Tunnel — ver "Despliegue y comunicación" en el Stack).
 - No se valida el contenido real del archivo (solo la extensión `.wav`) —
   alguien podría subir un archivo con otra extensión renombrado a `.wav`.
   Se podría añadir una comprobación de las cabeceras reales del fichero.
