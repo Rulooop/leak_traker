@@ -23,8 +23,8 @@ El flujo es el siguiente:
 3. Si esa canción se filtra en internet, se sube el archivo sospechoso al
    sistema, que extrae el código y dice exactamente de qué copia (y por tanto
    de qué destinatario) salió.
-4. Si hay coincidencia, se dispara una alerta automática (webhook) avisando en
-   tiempo real.
+4. Si hay coincidencia, se dispara una alerta automática por Telegram avisando
+   en tiempo real.
 
 Encaja con los cuatro bloques que pedía el trabajo: **base de datos**,
 **API/webhook**, **aplicación**, y **repositorio de GitHub con historial de
@@ -35,22 +35,28 @@ commits**.
 ## 2. Arquitectura
 
 ```
-frontend (HTML simple)
+frontend (dashboard de una sola página, HTML/CSS/JS sin frameworks)
       │
       ▼
 backend (FastAPI)
-   ├── /watermark   → incrusta el código y guarda el registro
-   ├── /verify       → extrae el código de un archivo sospechoso
-   └── /webhook-test → dispara una alerta de prueba
+   ├── /watermark                          → incrusta el código y guarda el registro
+   ├── /verify                             → extrae el código de un archivo sospechoso y dispara alerta si hay match
+   ├── /recipients                         → crear y listar destinatarios
+   ├── /stats /tracks /watermarked-files   → endpoints de solo lectura que alimentan el dashboard
+   ├── /leak-detections                    → historial de verificaciones
+   ├── /watermarked-files/{id}/download    → descarga autenticada de una copia marcada
+   └── /webhook-test                       → dispara una alerta de prueba
       │
       ▼
-BBDD (SQLite en dev / PostgreSQL en producción)
+BBDD (SQLite en dev / PostgreSQL en producción, vía docker-compose)
 ```
 
 **Stack elegido:** Python (FastAPI) para el backend, SQLAlchemy como ORM,
 SQLite para desarrollo local y PostgreSQL para producción, Docker/Docker
-Compose para el despliegue, y un frontend mínimo en HTML/JS puro para probar
-la API sin depender de herramientas externas.
+Compose para los contenedores, un frontend propio en HTML/CSS/JS puro (sin
+frameworks), Telegram Bot API para las alertas, y Cloudflare Tunnel + un
+dominio propio (`leaktracker.cloud`) para publicarlo en internet sin pagar un
+VPS. Detalle completo en la sección "Stack tecnológico" del `README.md`.
 
 ---
 
@@ -90,16 +96,25 @@ extremo:
 - `POST /watermark` — sube una canción + destinatario, devuelve la copia
   marcada y guarda el registro.
 - `POST /verify` — sube un archivo sospechoso, extrae el código y dice de
-  quién es la filtración si hay coincidencia.
+  quién es la filtración si hay coincidencia (y dispara la alerta).
 - `POST /recipients` / `GET /recipients` — gestión de destinatarios.
+- `GET /stats` / `GET /tracks` / `GET /watermarked-files` /
+  `GET /leak-detections` — endpoints de solo lectura que alimentan el
+  dashboard.
+- `GET /watermarked-files/{id}/download` — descarga autenticada de una copia
+  marcada (protegida con `X-API-Key`, no es un archivo estático).
 - `POST /webhook-test` — dispara una alerta de prueba manualmente.
 
-### 3.4 Webhook (parcial)
+### 3.4 Alertas por Telegram (conectado y probado)
 
-Hay un stub en `backend/app/routes/webhook.py` (`send_alert()`) preparado
-para enviar mensajes a Slack/Telegram vía un *Incoming Webhook*. Se dispara
-automáticamente cuando `/verify` encuentra una coincidencia. **Falta**
-conectarlo a un webhook real (ver sección de pendientes).
+`send_alert()` en `backend/app/routes/webhook.py` llama directamente a la API
+de Telegram (`sendMessage`) usando un bot propio (`@Trackerleakbot`), en vez
+del stub genérico de Incoming Webhook que había al principio. El token del
+bot y el `chat_id` viven en `.env` (nunca en el código ni en el repo).
+Probado end-to-end dos veces: con `/webhook-test` y con un caso real completo
+(crear destinatario → generar copia marcada → "filtrarla" → `/verify`) — en
+ambos casos la alerta llegó sola a Telegram. La `API_KEY` y el token del bot
+se rotaron una vez tras quedar expuestos accidentalmente.
 
 ### 3.5 Seguridad
 
@@ -116,26 +131,48 @@ Medidas implementadas y documentadas en el propio `README.md`:
   evita ataques de *path traversal*.
 - **Fallo seguro**: si falta la `API_KEY` en la configuración, el servidor
   da error en vez de quedar abierto por descuido.
+- **Descarga solo vía endpoint autenticado**: la carpeta `uploads/` no se
+  sirve como estáticos (ni en el backend ni en el nginx del frontend); la
+  única forma de descargar una copia marcada es
+  `/watermarked-files/{id}/download`, protegido con `X-API-Key`.
+- **CORS restringido en producción**: `ALLOWED_ORIGINS` está fijado a
+  `https://leaktracker.cloud` (ya no `*`), ahora que la web es pública de
+  verdad.
 
 Todas estas medidas se probaron activamente (no solo se escribieron): se
 lanzó el servidor y se comprobó con peticiones reales que cada protección
 responde como debe (401 sin clave, 413 con archivo demasiado grande, etc.).
 
-### 3.6 Despliegue (preparado, no probado en real)
+Pendiente de securizar (detalle y por qué en el `README.md`): validar el
+contenido real del archivo subido (no solo la extensión `.wav`), HTTPS en
+local, y centralizar el rate limiting con Redis si algún día hay varias
+réplicas del backend.
 
-`docker-compose.yml` y `Dockerfile` listos para levantar el backend + una
-base de datos PostgreSQL con un solo comando, pensado para desplegarse en un
-VPS de Hetzner.
+### 3.6 Despliegue (en producción, probado de verdad)
+
+Se descartó un VPS de pago (Hetzner) a favor de autoalojar el proyecto desde
+la propia VM con **Cloudflare Tunnel**, sin coste de servidor:
+
+- Dominio propio `leaktracker.cloud` comprado en IONOS, con el DNS
+  gestionado en Cloudflare.
+- `docker-compose.yml` levanta los 3 servicios (`db` con PostgreSQL,
+  `backend`, `frontend` con nginx) en la VM.
+- Un túnel de Cloudflare con nombre fijo (`leak-tracker`) expone
+  `leaktracker.cloud` → frontend y `api.leaktracker.cloud` → backend,
+  instalado como servicio systemd para que sobreviva a cerrar la terminal o
+  reiniciar la VM (no a apagarla).
+- Confirmado accesible desde fuera de la VM (probado desde el móvil con
+  datos móviles, no wifi).
 
 ### 3.7 Entorno de trabajo y flujo con GitHub
 
 - Máquina virtual con Ubuntu 24.04 LTS montada en VirtualBox, con Git,
   Python, Docker y Claude Code instalados.
-- Repositorio creado en GitHub (`Rulooop/leak_traker`) y conectado por SSH
-  usando autenticación por token personal.
-- Historial de commits real reflejando el proceso de construcción:
-  esqueleto inicial → medidas de seguridad → corrección de estructura de
-  carpetas.
+- Repositorio creado en GitHub (`Rulooop/leak_traker`) y conectado por HTTPS
+  con credenciales guardadas localmente.
+- Historial de commits real reflejando todo el proceso de construcción, y un
+  `DIARIO.md` con el resumen sesión a sesión en lenguaje normal (además del
+  historial técnico de commits).
 
 ---
 
@@ -143,14 +180,10 @@ VPS de Hetzner.
 
 | Tarea | Prioridad | Notas |
 |---|---|---|
-| Conectar el webhook real (Slack/Telegram) | Alta | Solo falta rellenar `send_alert()` con la URL del webhook y probarlo |
-| Desplegar en el VPS de Hetzner | Alta | `docker-compose.yml` ya está listo; falta contratar el VPS, subir el proyecto y poner HTTPS (Caddy o nginx) delante |
-| Cargar saldo en Claude Code o seguir completando a mano | Media | Para agilizar el resto de tareas con commits automáticos |
-| Pulir el frontend | Media | Ahora mismo es funcional pero muy básico visualmente |
-| Cambiar SQLite por PostgreSQL en el flujo real | Media | El `docker-compose.yml` ya lo contempla; falta probarlo de verdad, no solo en local con SQLite |
-| Validar el contenido real del archivo (no solo la extensión `.wav`) | Baja | Alguien podría renombrar un archivo distinto como `.wav` |
-| Servir los audios solo vía endpoint autenticado | Baja | Ahora mismo se guardan como archivos estáticos accesibles si se conoce la ruta |
-| Centralizar el rate limiting si hay varias réplicas del backend | Baja | Solo relevante si se escala a más de una instancia |
+| Validar el contenido real del archivo (no solo la extensión `.wav`) | Media | Alguien podría renombrar un archivo distinto como `.wav`; único pendiente con impacto de seguridad práctico ahora que la web es pública |
+| Escáner automático de filtraciones en fuentes externas | Media | Aplazado a propósito (no lo pedía el enunciado); si se retoma, versión mínima con 1-2 fuentes con API oficial (YouTube/SoundCloud) + job programado, en vez de scraping genérico |
+| HTTPS en local | Baja | En producción ya lo da Cloudflare Tunnel; en desarrollo local sigue sin HTTPS |
+| Centralizar el rate limiting si hay varias réplicas del backend | Baja | Está en memoria por IP; solo relevante si se escala a más de una instancia (con una, como ahora, no es urgente) |
 
 ---
 
@@ -159,6 +192,8 @@ VPS de Hetzner.
 El proyecto cumple con los cuatro requisitos del enunciado (BBDD, API/webhook,
 aplicación, GitHub con historial de commits construido con Claude), tiene un
 componente técnico propio y no trivial (el watermarking de audio inaudible),
-y documenta de forma honesta tanto las decisiones de seguridad tomadas como
-lo que queda pendiente — que es tan valioso de mostrar como lo que ya
-funciona.
+y ya no se queda en "funciona en local": está desplegado de verdad en
+`https://leaktracker.cloud`, con alertas de Telegram reales y probadas. El
+proyecto documenta de forma honesta tanto las decisiones de seguridad
+tomadas como lo poco que queda pendiente — que es tan valioso de mostrar
+como lo que ya funciona.
