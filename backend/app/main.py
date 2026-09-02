@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from . import models, schemas
 from .database import Base, engine, get_db
 from .rate_limit import limiter
-from .routes import dashboard, verify, watermark, webhook
+from .routes import dashboard, support_chat, verify, watermark, webhook
 from .security import require_api_key
 
 # Crea las tablas si no existen (para producción real, mejor usar Alembic).
@@ -42,6 +42,7 @@ app.include_router(watermark.router, tags=["watermark"])
 app.include_router(verify.router, tags=["verify"])
 app.include_router(webhook.router, tags=["webhook"])
 app.include_router(dashboard.router, tags=["dashboard"])
+app.include_router(support_chat.router, tags=["support-chat"])
 
 
 @app.get("/")

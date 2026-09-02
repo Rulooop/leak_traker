@@ -1,4 +1,5 @@
 import datetime
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -69,3 +70,17 @@ class StatsOut(BaseModel):
     total_recipients: int
     total_watermarked_files: int
     total_leaks_detected: int
+
+
+class SupportChatTurn(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
+class SupportChatIn(BaseModel):
+    message: str
+    history: list[SupportChatTurn] = []
+
+
+class SupportChatOut(BaseModel):
+    reply: str

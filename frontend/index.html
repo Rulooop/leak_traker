@@ -111,6 +111,12 @@
   .stat-card{
     background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
     padding:16px 18px;
+    transition:transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  }
+  .stat-card:hover{
+    transform:translateY(-2px) scale(1.015);
+    box-shadow:0 8px 20px rgba(0,0,0,0.35);
+    border-color:var(--amber);
   }
   .stat-value{ font-family:'Space Grotesk', sans-serif; font-size:26px; font-weight:700; }
   .stat-label{ color:var(--dim); font-size:12px; margin-top:4px; }
@@ -152,6 +158,7 @@
   }
   .badge.leak{ background:var(--coral-soft); color:var(--coral); }
   .badge.clean{ background:var(--teal-soft); color:var(--teal); }
+  .badge.attention{ background:var(--amber-soft); color:var(--amber); }
 
   .empty{ color:var(--dim); font-size:13px; padding:26px 4px; text-align:center; }
 
@@ -183,6 +190,113 @@
 
   .settings-row{ display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; }
   .settings-row > div{ flex:1; min-width:200px; }
+
+  /* ---------- transición entre vistas ---------- */
+  #content{ opacity:0; transform:translateY(6px); }
+  #content.fade-in{ opacity:1; transform:translateY(0); transition:opacity 0.18s ease, transform 0.18s ease; }
+
+  /* ---------- icono de ayuda / info ---------- */
+  .info-icon{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:16px; height:16px; border-radius:50%;
+    border:1px solid var(--border); color:var(--dim);
+    font-size:10.5px; font-weight:700; font-family:'IBM Plex Mono', monospace;
+    cursor:pointer; margin-left:6px; flex-shrink:0;
+    background:transparent;
+    transition:border-color 0.12s ease, color 0.12s ease;
+  }
+  .info-icon:hover{ border-color:var(--amber); color:var(--amber); }
+
+  /* ---------- modal genérico ---------- */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,0.6);
+    display:flex; align-items:center; justify-content:center;
+    z-index:200; padding:20px;
+  }
+  .modal-box{
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    max-width:480px; width:100%; padding:22px; max-height:80vh; overflow-y:auto;
+  }
+  .modal-title-row{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .modal-title{ font-family:'Space Grotesk', sans-serif; font-size:16px; font-weight:700; }
+  .modal-close{
+    background:none; border:none; color:var(--dim); font-size:18px; line-height:1; padding:2px 6px; cursor:pointer;
+  }
+  .modal-close:hover{ color:var(--paper); filter:none; }
+  .modal-body{ font-size:13.5px; color:var(--paper); opacity:0.9; }
+  .modal-body p{ margin:0 0 12px 0; }
+  .modal-body p:last-child{ margin-bottom:0; }
+  .modal-body code{ font-family:'IBM Plex Mono', monospace; background:var(--panel-raised); padding:1px 5px; border-radius:4px; }
+
+  /* ---------- widget de chat de soporte ---------- */
+  .chat-fab{
+    position:fixed; bottom:24px; right:24px; z-index:100;
+    width:52px; height:52px; border-radius:50%;
+    background:var(--amber); color:#1A1300;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 6px 18px rgba(0,0,0,0.45);
+    border:none; cursor:pointer;
+    transition:transform 0.15s ease, filter 0.15s ease;
+  }
+  .chat-fab:hover{ transform:scale(1.06); }
+  .chat-window{
+    position:fixed; bottom:88px; right:24px; z-index:100;
+    width:340px; max-width:calc(100vw - 32px); height:460px; max-height:calc(100vh - 130px);
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    box-shadow:0 12px 32px rgba(0,0,0,0.5);
+    display:flex; flex-direction:column; overflow:hidden;
+    opacity:0; transform:translateY(12px) scale(0.98); pointer-events:none;
+    transition:opacity 0.15s ease, transform 0.15s ease;
+  }
+  .chat-window.open{ opacity:1; transform:translateY(0) scale(1); pointer-events:auto; }
+  .chat-header{
+    padding:14px 16px; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
+  }
+  .chat-header-title{ font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:13.5px; }
+  .chat-header-sub{ font-size:11px; color:var(--dim); margin-top:2px; }
+  .chat-messages{ flex:1; overflow-y:auto; padding:14px 16px; display:flex; flex-direction:column; gap:10px; }
+  .chat-msg{ max-width:85%; padding:8px 11px; border-radius:10px; font-size:13px; line-height:1.4; white-space:pre-wrap; }
+  .chat-msg.user{ align-self:flex-end; background:var(--amber-soft); color:var(--paper); }
+  .chat-msg.assistant{ align-self:flex-start; background:var(--panel-raised); color:var(--paper); }
+  .chat-msg.error{ align-self:flex-start; background:var(--coral-soft); color:var(--coral); }
+  .chat-typing{ align-self:flex-start; font-size:12px; color:var(--dim); font-style:italic; padding:0 2px; }
+  .chat-input-row{ display:flex; gap:8px; padding:12px; border-top:1px solid var(--border); flex-shrink:0; }
+  .chat-input-row textarea{
+    flex:1; resize:none; background:var(--panel-raised); border:1px solid var(--border);
+    color:var(--paper); border-radius:7px; padding:8px 10px; font-size:13px;
+    font-family:'Inter', sans-serif; height:38px;
+  }
+  .chat-input-row textarea:focus{ outline:none; border-color:var(--amber); }
+  .chat-input-row button{ flex-shrink:0; padding:8px 14px; }
+
+  /* ---------- gráfica "Protection Overview" ---------- */
+  .chart-card{ position:relative; margin-bottom:28px; }
+  .chart-card svg{ display:block; overflow:visible; }
+  .chart-point{ cursor:pointer; }
+  .chart-tooltip{
+    position:absolute; pointer-events:none; z-index:10;
+    background:var(--panel-raised); border:1px solid var(--border); border-radius:7px;
+    padding:7px 10px; font-size:12px; font-family:'IBM Plex Mono', monospace;
+    box-shadow:0 6px 16px rgba(0,0,0,0.4); white-space:nowrap;
+    opacity:0; transition:opacity 0.1s ease;
+  }
+  .chart-tooltip.visible{ opacity:1; }
+
+  /* ---------- filtros ---------- */
+  .filter-row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+  .filter-chip{
+    background:var(--panel-raised); border:1px solid var(--border); color:var(--dim);
+    font-size:12px; font-weight:600; padding:6px 12px; border-radius:99px; cursor:pointer;
+    transition:background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  }
+  .filter-chip:hover{ color:var(--paper); }
+  .filter-chip.active{ background:var(--amber-soft); color:var(--amber); border-color:var(--amber); }
+  .filter-dates{ display:flex; align-items:center; gap:6px; margin-left:auto; }
+  .filter-dates input[type=date]{
+    background:var(--panel-raised); border:1px solid var(--border); color:var(--paper);
+    border-radius:7px; padding:6px 8px; font-size:12px; font-family:'Inter', sans-serif;
+  }
 
   @media (max-width: 760px){
     .app{ flex-direction:column; }
@@ -253,7 +367,20 @@ const state = {
   apiKey: localStorage.getItem('lt_apiKey') || '',
   view: 'dashboard',
   recipients: [],
+  chatHistory: [], // solo en memoria, se pierde al recargar la página
+  chatOpen: false,
+  detectionsFilter: { status: 'all', from: '', to: '' },
+  tracksFilter: { status: 'all' },
 };
+
+/* ---------- formato de código de watermark ----------
+   El backend guarda/extrae un entero plano de 16 bits (0-65535) — esto NO
+   cambia. "LT-XXXXXX" es solo un formato de visualización para que el
+   código sea más legible en el dashboard. */
+function formatCode(code){
+  if(code === null || code === undefined) return '—';
+  return 'LT-' + String(code).padStart(6, '0');
+}
 
 function saveConfig(url, key){
   state.apiUrl = url.replace(/\/$/, '');
@@ -304,6 +431,45 @@ function showError(msg){
   setTimeout(() => el.remove(), 5000);
 }
 
+/* ---------- modal genérico ---------- */
+function openModal(title, bodyHtml){
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'activeModal';
+  overlay.innerHTML = `
+    <div class="modal-box">
+      <div class="modal-title-row">
+        <div class="modal-title">${title}</div>
+        <button class="modal-close" aria-label="Cerrar">✕</button>
+      </div>
+      <div class="modal-body">${bodyHtml}</div>
+    </div>
+  `;
+  overlay.addEventListener('click', (e) => { if(e.target === overlay) closeModal(); });
+  overlay.querySelector('.modal-close').addEventListener('click', closeModal);
+  document.addEventListener('keydown', modalEscHandler);
+  document.body.appendChild(overlay);
+}
+
+function modalEscHandler(e){
+  if(e.key === 'Escape') closeModal();
+}
+
+function closeModal(){
+  const existing = document.getElementById('activeModal');
+  if(existing) existing.remove();
+  document.removeEventListener('keydown', modalEscHandler);
+}
+
+function watermarkExplainerHtml(){
+  return `
+    <p><strong>¿Qué es la marca de agua?</strong> Cuando generas una copia de una canción para un destinatario, LeakTracker incrusta un tono inaudible dentro del propio audio — no se nota al escucharlo, pero el sistema puede leerlo del archivo.</p>
+    <p><strong>¿Cómo se genera el código?</strong> Se usa una técnica llamada FSK (Frequency Shift Keying): cada bit del código se codifica como un tonito muy corto en una frecuencia ultrasónica (18.5-19.5 kHz), fuera del rango que el oído humano percibe con claridad. El código interno es un número de 16 bits, y en el dashboard se muestra en formato legible <code>LT-XXXXXX</code> (por ejemplo <code>LT-045627</code>).</p>
+    <p><strong>¿Cómo identifica una filtración?</strong> Cada copia marcada tiene un código distinto ligado a un destinatario concreto. Si esa canción se filtra, subes el archivo sospechoso en "Verificar filtración": el sistema extrae el tono inaudible, recupera el código y te dice exactamente a quién se le había enviado esa copia.</p>
+  `;
+}
+
 async function checkConnection(){
   const dot = document.getElementById('connDot');
   const text = document.getElementById('connText');
@@ -316,6 +482,104 @@ async function checkConnection(){
     dot.className = 'dot bad';
     text.textContent = 'sin conexión';
     return false;
+  }
+}
+
+/* ---------- widget de chat de soporte con IA ---------- */
+function renderChatWidget(){
+  const fab = document.createElement('button');
+  fab.className = 'chat-fab';
+  fab.id = 'chatFab';
+  fab.setAttribute('aria-label', 'Abrir chat de soporte');
+  fab.innerHTML = `<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M4 5h14a1.5 1.5 0 0 1 1.5 1.5v7A1.5 1.5 0 0 1 18 15h-8l-4 3v-3H4A1.5 1.5 0 0 1 2.5 13.5v-7A1.5 1.5 0 0 1 4 5z" stroke="#1A1300" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
+
+  const win = document.createElement('div');
+  win.className = 'chat-window';
+  win.id = 'chatWindow';
+  win.innerHTML = `
+    <div class="chat-header">
+      <div>
+        <div class="chat-header-title">Soporte LeakTracker</div>
+        <div class="chat-header-sub">Pregunta cómo funciona el watermark, /verify, /recipients...</div>
+      </div>
+      <button class="modal-close" id="chatCloseBtn" aria-label="Cerrar chat">✕</button>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+      <div class="chat-msg assistant">Hola 👋 Soy el asistente de LeakTracker. Pregúntame lo que quieras sobre cómo funciona el sistema de marcas de agua.</div>
+    </div>
+    <div class="chat-input-row">
+      <textarea id="chatInput" placeholder="Escribe tu pregunta…"></textarea>
+      <button class="btn-primary" id="chatSendBtn">Enviar</button>
+    </div>
+  `;
+
+  document.body.appendChild(fab);
+  document.body.appendChild(win);
+
+  fab.addEventListener('click', toggleChat);
+  win.querySelector('#chatCloseBtn').addEventListener('click', toggleChat);
+  win.querySelector('#chatSendBtn').addEventListener('click', sendChatMessage);
+  win.querySelector('#chatInput').addEventListener('keydown', (e) => {
+    if(e.key === 'Enter' && !e.shiftKey){
+      e.preventDefault();
+      sendChatMessage();
+    }
+  });
+}
+
+function toggleChat(){
+  state.chatOpen = !state.chatOpen;
+  document.getElementById('chatWindow').classList.toggle('open', state.chatOpen);
+  if(state.chatOpen) document.getElementById('chatInput').focus();
+}
+
+function appendChatMessage(role, text){
+  const container = document.getElementById('chatMessages');
+  const el = document.createElement('div');
+  el.className = `chat-msg ${role}`;
+  el.textContent = text;
+  container.appendChild(el);
+  container.scrollTop = container.scrollHeight;
+}
+
+async function sendChatMessage(){
+  const input = document.getElementById('chatInput');
+  const message = input.value.trim();
+  if(!message) return;
+
+  appendChatMessage('user', message);
+  input.value = '';
+  input.disabled = true;
+  const sendBtn = document.getElementById('chatSendBtn');
+  sendBtn.disabled = true;
+
+  const container = document.getElementById('chatMessages');
+  const typing = document.createElement('div');
+  typing.className = 'chat-typing';
+  typing.textContent = 'Escribiendo…';
+  container.appendChild(typing);
+  container.scrollTop = container.scrollHeight;
+
+  try{
+    const result = await api('/support-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message,
+        history: state.chatHistory.slice(-10),
+      }),
+    });
+    typing.remove();
+    appendChatMessage('assistant', result.reply);
+    state.chatHistory.push({ role: 'user', content: message });
+    state.chatHistory.push({ role: 'assistant', content: result.reply });
+  }catch(e){
+    typing.remove();
+    appendChatMessage('error', `No se pudo obtener respuesta: ${e.message}`);
+  }finally{
+    input.disabled = false;
+    sendBtn.disabled = false;
+    input.focus();
   }
 }
 
@@ -344,16 +608,18 @@ function navigate(view){
 /* ---------- render principal ---------- */
 async function render(){
   const el = document.getElementById('content');
+  el.classList.remove('fade-in');
   el.innerHTML = '<div class="empty">Cargando…</div>';
   try{
-    if(state.view === 'dashboard') return renderDashboard(el);
-    if(state.view === 'new-track') return renderNewTrack(el);
-    if(state.view === 'verify') return renderVerify(el);
-    if(state.view === 'recipients') return renderRecipients(el);
-    if(state.view === 'settings') return renderSettings(el);
+    if(state.view === 'dashboard') await renderDashboard(el);
+    else if(state.view === 'new-track') await renderNewTrack(el);
+    else if(state.view === 'verify') await renderVerify(el);
+    else if(state.view === 'recipients') await renderRecipients(el);
+    else if(state.view === 'settings') await renderSettings(el);
   }catch(e){
     el.innerHTML = `<div class="empty">No se ha podido cargar: ${e.message}</div>`;
   }
+  requestAnimationFrame(() => el.classList.add('fade-in'));
 }
 
 /* ---------- waveform hero (elemento firma) ---------- */
@@ -383,13 +649,130 @@ function waveformSVG(){
   </svg>`;
 }
 
+/* ---------- gráfica "Protection Overview" ---------- */
+function buildDailySeries(files){
+  if(files.length === 0) return [];
+
+  const dayKey = (iso) => iso.slice(0, 10);
+  const counts = {};
+  files.forEach(f => {
+    const key = dayKey(f.created_at);
+    counts[key] = (counts[key] || 0) + 1;
+  });
+
+  const sortedDays = Object.keys(counts).sort();
+  const start = new Date(sortedDays[0] + 'T00:00:00');
+  const end = new Date(sortedDays[sortedDays.length - 1] + 'T00:00:00');
+
+  const series = [];
+  let cumulative = 0;
+  for(let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)){
+    const key = d.toISOString().slice(0, 10);
+    cumulative += counts[key] || 0;
+    series.push({ date: key, value: cumulative });
+  }
+  return series;
+}
+
+function renderProtectionChart(series){
+  const width = 600, height = 160, padX = 10, padY = 16;
+  const maxValue = Math.max(...series.map(p => p.value), 1);
+  const stepX = series.length > 1 ? (width - padX * 2) / (series.length - 1) : 0;
+
+  const points = series.map((p, i) => {
+    const x = padX + i * stepX;
+    const y = height - padY - ((p.value / maxValue) * (height - padY * 2));
+    return { ...p, x, y };
+  });
+
+  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  const areaPath = `${linePath} L${points[points.length - 1].x.toFixed(1)},${height - padY} L${points[0].x.toFixed(1)},${height - padY} Z`;
+
+  const circles = points.map(p => `
+    <circle class="chart-point" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="9" fill="transparent"
+      data-date="${p.date}" data-value="${p.value}"></circle>
+    <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="2.5" fill="var(--amber)" pointer-events="none"></circle>
+  `).join('');
+
+  return `
+    <svg width="100%" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+      <path d="${areaPath}" fill="var(--amber-soft)" stroke="none"></path>
+      <path d="${linePath}" fill="none" stroke="var(--amber)" stroke-width="2"></path>
+      ${circles}
+    </svg>
+    <div class="chart-tooltip" id="chartTooltip"></div>
+  `;
+}
+
+function wireChartTooltip(cardEl){
+  const tooltip = cardEl.querySelector('#chartTooltip');
+  if(!tooltip) return;
+  cardEl.querySelectorAll('.chart-point').forEach(point => {
+    point.addEventListener('mousemove', (e) => {
+      const rect = cardEl.getBoundingClientRect();
+      const date = new Date(point.dataset.date + 'T00:00:00').toLocaleDateString();
+      tooltip.textContent = `${date} · ${point.dataset.value} copias`;
+      tooltip.style.left = `${e.clientX - rect.left + 12}px`;
+      tooltip.style.top = `${e.clientY - rect.top - 30}px`;
+      tooltip.classList.add('visible');
+    });
+    point.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
+  });
+}
+
+/* ---------- filtros genéricos (client-side) ---------- */
+function renderFilterChipsHtml(options, activeValue){
+  return options.map(opt => `<button class="filter-chip${opt.value === activeValue ? ' active' : ''}" data-value="${opt.value}">${opt.label}</button>`).join('');
+}
+
+function wireFilterChips(container, onChange){
+  container.querySelectorAll('.filter-chip').forEach(chip => {
+    chip.addEventListener('click', () => onChange(chip.dataset.value));
+  });
+}
+
+/* ---------- "Top Tracks": canciones por nº de copias distribuidas ---------- */
+function buildTopTracks(tracks, files, detections){
+  return tracks.map(track => {
+    const trackFiles = files.filter(f => f.track_title === track.title);
+    const trackDetections = detections.filter(d => d.track_title === track.title);
+    const hasMatch = trackDetections.some(d => d.matched);
+    const hasCheckedClean = trackDetections.length > 0 && !hasMatch;
+
+    let status = 'protected';
+    if(hasMatch) status = 'leak';
+    else if(hasCheckedClean) status = 'attention';
+
+    return {
+      title: track.title,
+      artist: track.artist,
+      copies: trackFiles.length,
+      status,
+    };
+  }).sort((a, b) => b.copies - a.copies);
+}
+
+const TRACK_STATUS_LABEL = {
+  protected: '<span class="badge clean">PROTEGIDO</span>',
+  attention: '<span class="badge attention">ATENCIÓN</span>',
+  leak: '<span class="badge leak">FILTRACIÓN</span>',
+};
+
 /* ---------- vista: dashboard ---------- */
 async function renderDashboard(el){
-  const [stats, detections, files] = await Promise.all([
+  const [stats, detections, files, tracks] = await Promise.all([
     api('/stats'),
     api('/leak-detections'),
     api('/watermarked-files'),
+    api('/tracks'),
   ]);
+
+  const totalChecks = detections.length;
+  const matchedChecks = detections.filter(d => d.matched).length;
+  const detectionRate = totalChecks === 0 ? '—' : `${Math.round((matchedChecks / totalChecks) * 100)}%`;
+
+  const dailySeries = buildDailySeries(files);
+  const topTracks = buildTopTracks(tracks, files, detections);
 
   el.innerHTML = `
     <div class="hero">
@@ -400,26 +783,31 @@ async function renderDashboard(el){
     <div class="grid-stats">
       <div class="stat-card"><div class="stat-value">${stats.total_tracks}</div><div class="stat-label">Canciones</div></div>
       <div class="stat-card"><div class="stat-value">${stats.total_recipients}</div><div class="stat-label">Destinatarios</div></div>
-      <div class="stat-card"><div class="stat-value">${stats.total_watermarked_files}</div><div class="stat-label">Copias marcadas</div></div>
-      <div class="stat-card"><div class="stat-value" style="color:${stats.total_leaks_detected > 0 ? 'var(--coral)' : 'var(--paper)'}">${stats.total_leaks_detected}</div><div class="stat-label">Filtraciones detectadas</div></div>
+      <div class="stat-card"><div class="stat-value">${stats.total_watermarked_files}</div><div class="stat-label">Copias marcadas<span class="info-icon" id="watermarkInfoIcon" title="¿Qué es esto?">i</span></div></div>
+      <div class="stat-card"><div class="stat-value">${detectionRate}</div><div class="stat-label">Tasa de detección</div></div>
     </div>
 
-    <div class="section-title">Últimas verificaciones</div>
+    <div class="section-title">Protection Overview</div>
+    <div class="card chart-card" id="chartCard">
+      ${dailySeries.length === 0 ? '<div class="empty">Todavía no hay copias marcadas para mostrar una tendencia.</div>' : renderProtectionChart(dailySeries)}
+    </div>
+
+    <div class="section-title">Últimas verificaciones<span class="info-icon" id="detectionsInfoIcon" title="¿Qué es esto?">i</span></div>
     <div class="card">
-      ${detections.length === 0 ? '<div class="empty">Todavía no se ha verificado ningún archivo. Ve a "Verificar filtración" para comprobar un archivo sospechoso.</div>' : `
-      <table>
-        <thead><tr><th>Fecha</th><th>Resultado</th><th>Canción</th><th>Destinatario</th><th>Código</th></tr></thead>
-        <tbody>
-          ${detections.slice(0, 8).map(d => `
-            <tr>
-              <td class="mono">${new Date(d.created_at).toLocaleString()}</td>
-              <td>${d.matched ? '<span class="badge leak">FILTRACIÓN</span>' : '<span class="badge clean">SIN COINCIDENCIA</span>'}</td>
-              <td>${d.track_title || '—'}</td>
-              <td>${d.recipient_name || '—'}</td>
-              <td class="mono">${d.extracted_code ?? '—'}</td>
-            </tr>`).join('')}
-        </tbody>
-      </table>`}
+      ${totalChecks === 0 ? '<div class="empty">Todavía no se ha verificado ningún archivo. Ve a "Verificar filtración" para comprobar un archivo sospechoso.</div>' : `
+      <div class="filter-row" id="detectionsFilterRow">
+        ${renderFilterChipsHtml([
+          { value: 'all', label: `Todas (${totalChecks})` },
+          { value: 'leak', label: `Filtración (${matchedChecks})` },
+          { value: 'clean', label: `Sin coincidencia (${totalChecks - matchedChecks})` },
+        ], state.detectionsFilter.status)}
+        <div class="filter-dates">
+          <input type="date" id="detectionsFrom" value="${state.detectionsFilter.from}" />
+          <span style="color:var(--dim); font-size:12px;">a</span>
+          <input type="date" id="detectionsTo" value="${state.detectionsFilter.to}" />
+        </div>
+      </div>
+      <div id="detectionsTableWrap"></div>`}
     </div>
 
     <div class="section-title">Copias marcadas recientes</div>
@@ -433,16 +821,132 @@ async function renderDashboard(el){
               <td class="mono">${new Date(f.created_at).toLocaleString()}</td>
               <td>${f.track_title}</td>
               <td>${f.recipient_name}</td>
-              <td class="mono">${f.code}</td>
+              <td class="mono">${formatCode(f.code)}</td>
               <td><button class="download-btn" data-id="${f.id}" data-filename="${f.track_title}_${f.recipient_name}.wav" style="background:none; border:none; color:var(--amber); font-size:12px; font-weight:600; padding:0; cursor:pointer;">Descargar ↓</button></td>
             </tr>`).join('')}
         </tbody>
       </table>`}
     </div>
+
+    <div class="section-title">Top Tracks</div>
+    <div class="card">
+      ${topTracks.length === 0 ? '<div class="empty">Todavía no hay canciones registradas.</div>' : `
+      <div class="filter-row" id="tracksFilterRow">
+        ${renderFilterChipsHtml([
+          { value: 'all', label: 'Todos' },
+          { value: 'protected', label: 'Protegido' },
+          { value: 'attention', label: 'Atención' },
+          { value: 'leak', label: 'Filtración' },
+        ], state.tracksFilter.status)}
+      </div>
+      <div id="tracksTableWrap"></div>`}
+    </div>
   `;
 
   el.querySelectorAll('.download-btn').forEach(btn => {
     btn.addEventListener('click', () => downloadWatermarkedFile(btn.dataset.id, btn.dataset.filename));
+  });
+
+  const watermarkInfoIcon = document.getElementById('watermarkInfoIcon');
+  if(watermarkInfoIcon) watermarkInfoIcon.addEventListener('click', () => openModal('¿Qué es una marca de agua?', watermarkExplainerHtml()));
+  const detectionsInfoIcon = document.getElementById('detectionsInfoIcon');
+  if(detectionsInfoIcon) detectionsInfoIcon.addEventListener('click', () => openModal('¿Qué es una marca de agua?', watermarkExplainerHtml()));
+
+  const chartCard = document.getElementById('chartCard');
+  if(chartCard) wireChartTooltip(chartCard);
+
+  /* --- tabla de detecciones, filtrable sin volver a pedir datos --- */
+  function renderDetectionsTable(){
+    const wrap = document.getElementById('detectionsTableWrap');
+    if(!wrap) return;
+    const { status, from, to } = state.detectionsFilter;
+    const filtered = detections.filter(d => {
+      if(status === 'leak' && !d.matched) return false;
+      if(status === 'clean' && d.matched) return false;
+      const day = d.created_at.slice(0, 10);
+      if(from && day < from) return false;
+      if(to && day > to) return false;
+      return true;
+    });
+    wrap.innerHTML = filtered.length === 0 ? '<div class="empty">No hay verificaciones que coincidan con el filtro.</div>' : `
+      <table>
+        <thead><tr><th>Fecha</th><th>Resultado</th><th>Canción</th><th>Destinatario</th><th>Código</th></tr></thead>
+        <tbody>
+          ${filtered.slice(0, 20).map(d => `
+            <tr>
+              <td class="mono">${new Date(d.created_at).toLocaleString()}</td>
+              <td>${d.matched ? '<span class="badge leak">FILTRACIÓN</span>' : '<span class="badge clean">SIN COINCIDENCIA</span>'}</td>
+              <td>${d.track_title || '—'}</td>
+              <td>${d.recipient_name || '—'}</td>
+              <td class="mono">${formatCode(d.extracted_code)}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  const detectionsFilterRow = document.getElementById('detectionsFilterRow');
+  if(detectionsFilterRow){
+    wireFilterChips(detectionsFilterRow, (value) => {
+      state.detectionsFilter.status = value;
+      renderFilterChipsRow(detectionsFilterRow, [
+        { value: 'all', label: `Todas (${totalChecks})` },
+        { value: 'leak', label: `Filtración (${matchedChecks})` },
+        { value: 'clean', label: `Sin coincidencia (${totalChecks - matchedChecks})` },
+      ], value);
+      renderDetectionsTable();
+    });
+    document.getElementById('detectionsFrom').addEventListener('change', (e) => {
+      state.detectionsFilter.from = e.target.value;
+      renderDetectionsTable();
+    });
+    document.getElementById('detectionsTo').addEventListener('change', (e) => {
+      state.detectionsFilter.to = e.target.value;
+      renderDetectionsTable();
+    });
+    renderDetectionsTable();
+  }
+
+  /* --- tabla de top tracks, filtrable sin volver a pedir datos --- */
+  function renderTracksTable(){
+    const wrap = document.getElementById('tracksTableWrap');
+    if(!wrap) return;
+    const filtered = state.tracksFilter.status === 'all'
+      ? topTracks
+      : topTracks.filter(t => t.status === state.tracksFilter.status);
+    wrap.innerHTML = filtered.length === 0 ? '<div class="empty">No hay canciones que coincidan con el filtro.</div>' : `
+      <table>
+        <thead><tr><th>Canción</th><th>Artista</th><th>Copias distribuidas</th><th>Estado</th></tr></thead>
+        <tbody>
+          ${filtered.map(t => `
+            <tr>
+              <td>${t.title}</td>
+              <td>${t.artist}</td>
+              <td class="mono">${t.copies}</td>
+              <td>${TRACK_STATUS_LABEL[t.status]}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  const tracksFilterRow = document.getElementById('tracksFilterRow');
+  if(tracksFilterRow){
+    wireFilterChips(tracksFilterRow, (value) => {
+      state.tracksFilter.status = value;
+      renderFilterChipsRow(tracksFilterRow, [
+        { value: 'all', label: 'Todos' },
+        { value: 'protected', label: 'Protegido' },
+        { value: 'attention', label: 'Atención' },
+        { value: 'leak', label: 'Filtración' },
+      ], value);
+      renderTracksTable();
+    });
+    renderTracksTable();
+  }
+}
+
+function renderFilterChipsRow(container, options, activeValue){
+  container.querySelectorAll('.filter-chip').forEach((chip, i) => {
+    chip.classList.toggle('active', options[i].value === activeValue);
   });
 }
 
@@ -497,7 +1001,7 @@ async function renderNewTrack(el){
       const filename = `${title}_${recipientName}.wav`;
       document.getElementById('ntResult').innerHTML = `
         <div class="result-panel clean">
-          <div class="result-title">Copia generada — código ${result.code}</div>
+          <div class="result-title">Copia generada — código ${formatCode(result.code)}</div>
           <div class="result-detail">
             <button class="download-btn" style="background:none; border:none; color:var(--teal); font-weight:600; padding:0; cursor:pointer; font-size:13px;">Descargar el archivo marcado ↓</button>
           </div>
@@ -540,13 +1044,13 @@ function renderVerify(el){
         resEl.innerHTML = `
           <div class="result-panel leak">
             <div class="result-title">🚨 Filtración confirmada</div>
-            <div class="result-detail">'${result.track_title}' — viene de <strong>${result.recipient_name}</strong> (código ${result.extracted_code})</div>
+            <div class="result-detail">'${result.track_title}' — viene de <strong>${result.recipient_name}</strong> (código ${formatCode(result.extracted_code)})</div>
           </div>`;
       }else{
         resEl.innerHTML = `
           <div class="result-panel clean">
             <div class="result-title">Sin coincidencias</div>
-            <div class="result-detail">${result.extracted_code ? `Se detectó un código (${result.extracted_code}) pero no corresponde a ningún registro.` : 'No se encontró ningún watermark en este archivo.'}</div>
+            <div class="result-detail">${result.extracted_code ? `Se detectó un código (${formatCode(result.extracted_code)}) pero no corresponde a ningún registro.` : 'No se encontró ningún watermark en este archivo.'}</div>
           </div>`;
       }
     }catch(e){
@@ -628,6 +1132,7 @@ function renderSettings(el){
 
 /* ---------- arranque ---------- */
 (async function init(){
+  renderChatWidget();
   checkConnection();
   navigate(state.apiKey ? 'dashboard' : 'settings');
 })();
