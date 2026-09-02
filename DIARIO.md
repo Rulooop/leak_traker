@@ -207,6 +207,42 @@ recreara limpio — los archivos de `uploads/` no se tocaron porque viven en
 un bind mount del host. Pendiente cambiar a `docker compose` (plugin v2) para
 no volver a toparme con este bug en cada rebuild.
 
+## 2 de septiembre — Rediseño visual con la identidad de marca real
+
+**De dónde salió.** Le pasé a Claude una imagen de referencia del dashboard
+que quería (paleta, tarjetas, gráfica) y el logo oficial de LeakTracker
+(icono de onda + huella dactilar). Resultó ser, literalmente, el mockup que
+llevaba describiendo desde el primer pedido de la sesión (por eso las cosas
+tipo "Detection Accuracy" o "LT-XXXXXX" que fuimos ajustando a datos reales).
+
+**Paleta nueva.** Sustituido el ámbar/coral/teal original por la paleta real
+de la marca: negro casi puro de fondo, morado como color principal (botones,
+nav activo, gráfica, chips), y rojo/naranja/verde para filtración/atención/
+protegido. Variables CSS renombradas a `--accent`, `--danger`, `--warning`,
+`--success` para que el significado de cada color quede claro en el código.
+
+**Logo real.** Recorté el icono del logo oficial (quitándole el texto, que
+se veía borroso a tamaño pequeño) y le quité el fondo negro dejándolo
+transparente con un script rápido de Pillow; el texto "LEAK//TRACKER" se
+quedó como HTML con "TRACKER" en el degradado azul-morado del logo.
+
+**Layout tipo mockup, con límites honestos.** Añadí una navbar superior
+(logo + notificaciones con el nº real de filtraciones + acceso a ajustes +
+estado de conexión) y reestilicé el sidebar con un panel "Estado del
+sistema" y una tarjeta de marca. Reorganicé el dashboard en un grid de 2
+columnas con una sección nueva, "Actividad reciente", construida combinando
+eventos reales ya existentes (canciones subidas, copias generadas,
+detecciones) — sin backend nuevo. A propósito NO copié del mockup el saludo
+con nombre de usuario falso, los 4 "servicios" monitorizados por separado
+(solo hay un chequeo de conexión real) ni los porcentajes de confianza por
+fila (el sistema solo detecta coincidencia sí/no) — son cosas que la imagen
+mostraba pero que aquí no se pueden calcular de verdad.
+
+**Ajuste tras el primer pase.** Había puesto los enlaces de navegación
+duplicados (arriba en la navbar y en el sidebar); me pidieron dejarlos solo
+una vez, así que la navbar se quedó solo con logo + iconos, y toda la
+navegación vive únicamente en el sidebar.
+
 ## Pendiente para la próxima sesión
 
 - Revisar los puntos de la lista "Pendiente de securizar" del README.

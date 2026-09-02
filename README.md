@@ -45,6 +45,7 @@ BBDD (SQLite en dev / PostgreSQL en producción, vía docker-compose)
 - HTML, CSS y JavaScript puro (sin frameworks)
 - Google Fonts: Space Grotesk, Inter, IBM Plex Mono
 - SVG generado dinámicamente (la forma de onda y la gráfica "Protection Overview" del dashboard)
+- Identidad visual propia: logo real (`frontend/assets/logo-icon.png`) y paleta de marca (negro + morado, con rojo/naranja/verde para los estados de filtración/atención/protegido)
 
 **Infraestructura**
 - Docker + Docker Compose (contenedores)
@@ -69,6 +70,7 @@ despliegue están funcionando de verdad, en producción. Contiene:
 - [x] Autenticación por API key, límite de tamaño de archivo y rate limiting (ver "Seguridad" abajo)
 - [x] Frontend propio (dashboard, alta de canciones, verificación, destinatarios, ajustes de conexión)
 - [x] Dashboard interactivo: chat de soporte con IA (Claude), explicador del watermark, gráfica de tendencia con tooltips, filtros por estado/fecha y animaciones
+- [x] Identidad visual propia: logo real, paleta de marca, navbar superior y sidebar reestilizado, dashboard en grid de 2 columnas con "Actividad reciente"
 - [x] `docker-compose.yml` probado en local: los 3 servicios (`db`, `backend`, `frontend`) arrancan y responden correctamente
 - [x] Alertas por Telegram probadas de verdad (bot propio, `sendMessage` vía API de Telegram) — ver `backend/app/routes/webhook.py`
 - [x] Desplegado en internet: autoalojado desde la VM con Cloudflare Tunnel en `https://leaktracker.cloud`, con el túnel como servicio systemd persistente

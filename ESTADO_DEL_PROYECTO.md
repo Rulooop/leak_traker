@@ -200,6 +200,30 @@ ni el esquema de la BBDD:
   (100% client-side, sin peticiones nuevas al backend), animaciones al pasar
   el ratón por las tarjetas y transiciones suaves entre vistas del menú.
 
+### 3.9 Identidad visual propia
+
+A partir de una imagen de referencia y el logo oficial (aportados por Raúl),
+se adoptó la paleta e identidad de marca reales sobre la estructura ya
+construida:
+
+- **Paleta**: negro casi puro de fondo, morado como color de marca (botones,
+  navegación activa, gráfica), y rojo/naranja/verde para
+  filtración/atención/protegido — variables CSS renombradas
+  (`--accent`, `--danger`, `--warning`, `--success`) para que el significado
+  de cada color quede explícito en el código.
+- **Logo real**: icono recortado del logo oficial, con el fondo original
+  eliminado (transparencia), en `frontend/assets/logo-icon.png`.
+- **Layout**: navbar superior (logo + notificaciones con el nº real de
+  filtraciones + acceso a ajustes + estado de conexión) y sidebar con panel
+  "Estado del sistema" (derivado del mismo chequeo de conexión que ya
+  existía, sin inventar monitorización de servicios que no se pueden
+  comprobar). Dashboard reorganizado en grid de 2 columnas, con una sección
+  nueva "Actividad reciente" que combina eventos reales ya existentes
+  (canciones, copias, detecciones) sin backend nuevo.
+- **Límites honestos frente al mockup**: no se copiaron el nombre de usuario
+  falso, los "servicios" monitorizados por separado que no existen de
+  verdad, ni los porcentajes de confianza por fila que el sistema no calcula.
+
 ---
 
 ## 4. Lo que falta por hacer
