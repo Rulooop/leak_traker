@@ -45,6 +45,7 @@ backend (FastAPI)
    ├── /stats /tracks /watermarked-files   → endpoints de solo lectura que alimentan el dashboard
    ├── /leak-detections                    → historial de verificaciones
    ├── /watermarked-files/{id}/download    → descarga autenticada de una copia marcada
+   ├── /support-chat                       → chat de soporte con IA (Claude) sobre cómo funciona LeakTracker
    └── /webhook-test                       → dispara una alerta de prueba
       │
       ▼
@@ -54,9 +55,10 @@ BBDD (SQLite en dev / PostgreSQL en producción, vía docker-compose)
 **Stack elegido:** Python (FastAPI) para el backend, SQLAlchemy como ORM,
 SQLite para desarrollo local y PostgreSQL para producción, Docker/Docker
 Compose para los contenedores, un frontend propio en HTML/CSS/JS puro (sin
-frameworks), Telegram Bot API para las alertas, y Cloudflare Tunnel + un
-dominio propio (`leaktracker.cloud`) para publicarlo en internet sin pagar un
-VPS. Detalle completo en la sección "Stack tecnológico" del `README.md`.
+frameworks), Telegram Bot API para las alertas, la API de Claude (Anthropic)
+para el chat de soporte del dashboard, y Cloudflare Tunnel + un dominio
+propio (`leaktracker.cloud`) para publicarlo en internet sin pagar un VPS.
+Detalle completo en la sección "Stack tecnológico" del `README.md`.
 
 ---
 
@@ -104,6 +106,9 @@ extremo:
 - `GET /watermarked-files/{id}/download` — descarga autenticada de una copia
   marcada (protegida con `X-API-Key`, no es un archivo estático).
 - `POST /webhook-test` — dispara una alerta de prueba manualmente.
+- `POST /support-chat` — chat de soporte con IA (Claude Haiku 4.5) para
+  resolver dudas sobre el funcionamiento del sistema; protegido igual que el
+  resto (`X-API-Key` + rate limiting), usa `ANTHROPIC_API_KEY` desde `.env`.
 
 ### 3.4 Alertas por Telegram (conectado y probado)
 
@@ -173,6 +178,27 @@ la propia VM con **Cloudflare Tunnel**, sin coste de servidor:
 - Historial de commits real reflejando todo el proceso de construcción, y un
   `DIARIO.md` con el resumen sesión a sesión en lenguaje normal (además del
   historial técnico de commits).
+
+### 3.8 Dashboard interactivo y chat de soporte con IA
+
+Sobre el dashboard ya existente, añadido sin tocar el algoritmo de watermark
+ni el esquema de la BBDD:
+
+- **Chat de soporte con IA**: widget flotante (JS puro) conectado a
+  `POST /support-chat`, que llama a la API de Claude (Haiku 4.5) con un
+  system prompt que conoce el funcionamiento real del sistema. Sin
+  persistencia en servidor — el historial vive solo en memoria del navegador.
+- **Explicador del watermark**: icono de ayuda junto a las métricas
+  relacionadas, con un modal (reutilizable) que explica en lenguaje sencillo
+  qué es el watermark y cómo identifica una filtración. El código sigue
+  siendo un entero de 16 bits en el backend; el formato `LT-XXXXXX` es solo
+  una capa de visualización en el frontend.
+- **Más interactividad**: gráfica "Protection Overview" con tooltips de
+  fecha/valor exacto, una "Tasa de detección" real (en vez de una métrica de
+  "accuracy" inventada, que no se puede calcular sin datos de falsos
+  positivos/negativos), sección "Top Tracks", filtros por estado y fecha
+  (100% client-side, sin peticiones nuevas al backend), animaciones al pasar
+  el ratón por las tarjetas y transiciones suaves entre vistas del menú.
 
 ---
 

@@ -24,6 +24,7 @@ backend (FastAPI)
    ├── /stats /tracks /watermarked-files   → endpoints de solo lectura que alimentan el dashboard
    ├── /leak-detections                    → historial de verificaciones
    ├── /watermarked-files/{id}/download    → descarga autenticada de una copia marcada
+   ├── /support-chat                       → chat de soporte con IA (Claude) sobre cómo funciona LeakTracker
    └── /webhook-test                       → dispara una alerta de prueba
       │
       ▼
@@ -38,11 +39,12 @@ BBDD (SQLite en dev / PostgreSQL en producción, vía docker-compose)
 - NumPy + SciPy (el watermark de audio, técnica FSK)
 - slowapi (rate limiting), httpx (peticiones HTTP salientes)
 - SQLite (desarrollo) / PostgreSQL (producción)
+- API de Claude (Anthropic) para el chat de soporte con IA del dashboard
 
 **Frontend**
 - HTML, CSS y JavaScript puro (sin frameworks)
 - Google Fonts: Space Grotesk, Inter, IBM Plex Mono
-- SVG generado dinámicamente (la forma de onda del dashboard)
+- SVG generado dinámicamente (la forma de onda y la gráfica "Protection Overview" del dashboard)
 
 **Infraestructura**
 - Docker + Docker Compose (contenedores)
@@ -66,6 +68,7 @@ despliegue están funcionando de verdad, en producción. Contiene:
 - [x] API completa con FastAPI (watermark, verify, recipients, dashboard, descarga de archivos)
 - [x] Autenticación por API key, límite de tamaño de archivo y rate limiting (ver "Seguridad" abajo)
 - [x] Frontend propio (dashboard, alta de canciones, verificación, destinatarios, ajustes de conexión)
+- [x] Dashboard interactivo: chat de soporte con IA (Claude), explicador del watermark, gráfica de tendencia con tooltips, filtros por estado/fecha y animaciones
 - [x] `docker-compose.yml` probado en local: los 3 servicios (`db`, `backend`, `frontend`) arrancan y responden correctamente
 - [x] Alertas por Telegram probadas de verdad (bot propio, `sendMessage` vía API de Telegram) — ver `backend/app/routes/webhook.py`
 - [x] Desplegado en internet: autoalojado desde la VM con Cloudflare Tunnel en `https://leaktracker.cloud`, con el túnel como servicio systemd persistente
@@ -108,6 +111,13 @@ dejar los endpoints abiertos sin querer por un despiste de configuración.
 `uploads/` no se sirve como estáticos (ni en el backend ni en el nginx del
 frontend, que solo monta `frontend/`): la única forma de descargar una copia
 marcada es `/watermarked-files/{id}/download`, protegido con `X-API-Key`.
+
+**Chat de soporte con IA sin exponer secretos.** `/support-chat` sigue las
+mismas reglas que el resto de la API (`X-API-Key`, rate limiting) y usa
+`ANTHROPIC_API_KEY` solo desde variables de entorno, nunca en el código. El
+system prompt instruye explícitamente al modelo a no revelar claves, tokens
+ni detalles internos de infraestructura, y si la clave no está configurada
+el endpoint falla con un error controlado en vez de romper el servidor.
 
 ### Pendiente de securizar (para seguir mejorando)
 

@@ -174,9 +174,43 @@ terminal o a un reinicio de la VM, pero no a apagar la VM o el ordenador.
 `ALLOWED_ORIGINS` de `*` a `https://leaktracker.cloud` en el `.env` de la VM
 y recreé el contenedor del backend para que cogiera el cambio.
 
+## 2 de septiembre — Chat de soporte con IA y dashboard interactivo
+
+**Chat de soporte con Claude.** Añadí `POST /support-chat`: mismo patrón de
+seguridad que el resto de la API (`X-API-Key`, rate limiting), llama a la API
+de Claude (Haiku 4.5) con un system prompt que conoce el funcionamiento real
+del sistema (FSK, código de 16 bits, endpoints reales). La `ANTHROPIC_API_KEY`
+vive solo en `.env`, nunca en el código. En el frontend, un widget de chat
+flotante (JS puro) visible en todas las vistas, sin historial persistido en
+servidor.
+
+**Explicador del watermark.** Construí el primer sistema de modales del
+frontend (no existía ninguno) y un icono de ayuda junto a las métricas de
+watermark que explica, en lenguaje sencillo, qué es la marca de agua y cómo
+identifica una filtración. Aproveché para mostrar el código con un formato
+más legible (`LT-XXXXXX`) solo a nivel visual — el backend sigue guardando y
+extrayendo el mismo entero de 16 bits de siempre, no he tocado el algoritmo.
+
+**Más interactividad.** Gráfica de tendencia "Protection Overview" con
+tooltips de fecha/valor exacto, una "Tasa de detección" real sustituyendo a
+una métrica de "accuracy" que pedí pero que no se podía calcular de verdad
+(no hay datos de falsos positivos/negativos en el sistema), sección "Top
+Tracks", filtros por estado y fecha (sin peticiones nuevas al backend,
+todo filtrado en el propio navegador), animaciones en las tarjetas y
+transiciones suaves entre vistas.
+
+**Despliegue.** `docker-compose up -d --build` chocó con un bug conocido de
+`docker-compose` v1.29.2 (`KeyError: 'ContainerConfig'`) al recrear el
+contenedor del backend contra la versión actual del daemon Docker. Lo
+resolví eliminando el contenedor viejo a mano y dejando que compose lo
+recreara limpio — los archivos de `uploads/` no se tocaron porque viven en
+un bind mount del host. Pendiente cambiar a `docker compose` (plugin v2) para
+no volver a toparme con este bug en cada rebuild.
+
 ## Pendiente para la próxima sesión
 
 - Revisar los puntos de la lista "Pendiente de securizar" del README.
 - Implementar el escáner automático de filtraciones en fuentes externas.
 - Añadir un login de verdad al frontend, para no depender de pegar la
   `API_KEY` a mano en "Ajustes".
+- Migrar de `docker-compose` v1.29.2 a `docker compose` (plugin v2) en la VM.
