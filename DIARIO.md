@@ -123,6 +123,20 @@ externas (webs, foros), en vez de depender solo de la subida manual a
 
 ---
 
+## 2 de septiembre — Rotación de claves
+
+**API_KEY y token de Telegram rotados.** Al quedar expuestas ambas claves,
+generé una `API_KEY` nueva (`openssl rand -hex 32`) y revoqué el token del
+bot de Telegram desde @BotFather, sustituyéndolo por uno nuevo. Actualicé
+`.env` y recreé el contenedor del backend (con este docker-compose v1, un
+simple `restart` no relee el `.env`; hace falta `stop` + `rm -f` + `up -d`).
+
+**Verificación.** Confirmé que la API rechaza la clave vieja (401) y acepta
+la nueva, y que el bot de Telegram sigue funcionando con el token nuevo
+(alerta de prueba recibida correctamente).
+
+---
+
 ## Pendiente para la próxima sesión
 
 - Desplegar en un VPS de Hetzner con el `docker-compose.yml` ya preparado.
