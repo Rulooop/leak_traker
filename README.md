@@ -9,7 +9,7 @@ Sistema para rastrear filtraciones de canciones inéditas mediante marcas de agu
 2. El sistema incrusta un código único e inaudible en el audio y te devuelve la copia marcada.
 3. Si esa canción se filtra, subes el archivo sospechoso y el sistema extrae el código,
    diciéndote exactamente de quién salió.
-4. Si hay coincidencia, se dispara un webhook (Slack/Telegram) avisando en tiempo real.
+4. Si hay coincidencia, se dispara una alerta por Telegram avisando en tiempo real.
 
 ## Arquitectura
 
@@ -32,7 +32,8 @@ BBDD (SQLite en dev / PostgreSQL en producción, vía docker-compose)
 
 ## Estado de este repo
 
-Ya no es solo el esqueleto inicial: hay un backend funcional con panel web propio, probado en local con Docker. Sigue faltando el despliegue real y cerrar del todo la integración de alertas. Contiene:
+Ya no es solo el esqueleto inicial: el backend, el panel web, las alertas y el
+despliegue están funcionando de verdad, en producción. Contiene:
 
 - [x] Estructura de carpetas
 - [x] Modelo de datos (4 tablas)
@@ -41,8 +42,8 @@ Ya no es solo el esqueleto inicial: hay un backend funcional con panel web propi
 - [x] Autenticación por API key, límite de tamaño de archivo y rate limiting (ver "Seguridad" abajo)
 - [x] Frontend propio (dashboard, alta de canciones, verificación, destinatarios, ajustes de conexión)
 - [x] `docker-compose.yml` probado en local: los 3 servicios (`db`, `backend`, `frontend`) arrancan y responden correctamente
-- [ ] Webhook probado de verdad contra un Slack/Telegram real (el código ya envía un POST con el formato de un Incoming Webhook de Slack, pero falta configurarlo y probarlo con una URL real — ver `backend/app/routes/webhook.py`)
-- [ ] Despliegue en Hetzner con Docker detrás de Caddy/nginx
+- [x] Alertas por Telegram probadas de verdad (bot propio, `sendMessage` vía API de Telegram) — ver `backend/app/routes/webhook.py`
+- [x] Desplegado en internet: autoalojado desde la VM con Cloudflare Tunnel en `https://leaktracker.cloud`, con el túnel como servicio systemd persistente
 
 ## Seguridad
 
@@ -143,11 +144,7 @@ python -m app.watermark extract ejemplo_marcado.wav
 
 ## Siguientes pasos sugeridos
 
-1. Configura una URL real de Incoming Webhook de Slack/Telegram en
-   `ALERT_WEBHOOK_URL` y comprueba con `/webhook-test` (y con una filtración
-   real vía `/verify`) que la alerta llega de verdad.
-2. Despliega en un VPS de Hetzner con `docker-compose up -d` detrás de Caddy/nginx.
-3. Repasa la sección "Pendiente de securizar" del README y ve tachando puntos.
-4. Implementa un escáner automático que busque filtraciones periódicamente en
+1. Repasa la sección "Pendiente de securizar" del README y ve tachando puntos.
+2. Implementa un escáner automático que busque filtraciones periódicamente en
    fuentes externas (webs, foros) en vez de depender solo de la subida manual
    a `/verify`.

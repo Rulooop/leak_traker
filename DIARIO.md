@@ -137,8 +137,44 @@ la nueva, y que el bot de Telegram sigue funcionando con el token nuevo
 
 ---
 
+## 2 de septiembre — Despliegue en internet con Cloudflare Tunnel
+
+**Autoalojado en vez de VPS de pago.** Descarté Hetzner (de pago) y decidí
+publicar el proyecto directamente desde la propia VM usando Cloudflare
+Tunnel, sin gastar en un VPS.
+
+**Dominio y DNS.** Compré `leaktracker.cloud` en IONOS (0,50€ el primer año),
+lo conecté a Cloudflare y cambié los nameservers en IONOS a los de
+Cloudflare. Al crear las rutas DNS hubo un conflicto: unos registros A/AAAA
+antiguos de la página de aparcamiento de IONOS ocupaban ya el nombre
+`leaktracker.cloud`, y un CNAME no puede coexistir con otros registros para
+el mismo nombre. Los borré en Cloudflare y las rutas se crearon bien.
+
+**Túnel configurado.** Instalé `cloudflared` en la VM, lo autentiqué con mi
+cuenta de Cloudflare y creé un túnel con nombre fijo (`leak-tracker`) en vez
+de uno rápido con URL aleatoria, con dos rutas:
+`leaktracker.cloud` → frontend (`localhost:8080`) y
+`api.leaktracker.cloud` → backend (`localhost:8000`).
+
+**Confirmado accesible desde fuera.** Probé la web desde el móvil con datos
+móviles (no wifi): `https://leaktracker.cloud` responde de verdad desde
+internet.
+
+**Túnel persistente.** Instalé `cloudflared` como servicio systemd para que
+sobreviva a cerrar la terminal o reiniciar la VM. El primer intento falló
+porque `sudo` busca la configuración en `/root` en vez de en mi carpeta
+personal; lo arreglé indicando la ruta completa con `--config`. El servicio
+quedó `enabled` y `active (running)`.
+
+**Aviso importante.** La web solo está disponible mientras la VM esté
+encendida y corriendo — el servicio systemd la hace sobrevivir a cerrar la
+terminal o a un reinicio de la VM, pero no a apagar la VM o el ordenador.
+
+**CORS restringido.** Con la web ya pública de verdad, cambié
+`ALLOWED_ORIGINS` de `*` a `https://leaktracker.cloud` en el `.env` de la VM
+y recreé el contenedor del backend para que cogiera el cambio.
+
 ## Pendiente para la próxima sesión
 
-- Desplegar en un VPS de Hetzner con el `docker-compose.yml` ya preparado.
 - Revisar los puntos de la lista "Pendiente de securizar" del README.
 - Implementar el escáner automático de filtraciones en fuentes externas.
