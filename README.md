@@ -30,6 +30,31 @@ backend (FastAPI)
 BBDD (SQLite en dev / PostgreSQL en producción, vía docker-compose)
 ```
 
+## Stack tecnológico
+
+**Backend**
+- Python + FastAPI (framework de la API)
+- SQLAlchemy (ORM para la base de datos)
+- NumPy + SciPy (el watermark de audio, técnica FSK)
+- slowapi (rate limiting), httpx (peticiones HTTP salientes)
+- SQLite (desarrollo) / PostgreSQL (producción)
+
+**Frontend**
+- HTML, CSS y JavaScript puro (sin frameworks)
+- Google Fonts: Space Grotesk, Inter, IBM Plex Mono
+- SVG generado dinámicamente (la forma de onda del dashboard)
+
+**Infraestructura**
+- Docker + Docker Compose (contenedores)
+- nginx (sirve el frontend)
+- VirtualBox + Ubuntu 24.04 LTS (entorno de desarrollo)
+
+**Despliegue y comunicación**
+- Cloudflare (DNS + Cloudflare Tunnel, para exponer la web a internet sin coste de servidor)
+- IONOS (registro del dominio leaktracker.cloud)
+- Telegram Bot API (alertas de filtración)
+- Git + GitHub (control de versiones)
+
 ## Estado de este repo
 
 Ya no es solo el esqueleto inicial: el backend, el panel web, las alertas y el
