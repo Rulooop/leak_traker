@@ -7,13 +7,16 @@ from slowapi.errors import RateLimitExceeded
 from sqlalchemy.orm import Session
 
 from . import models, schemas
+from .auth import get_current_user
+from .bootstrap import run_startup_tasks
 from .database import Base, engine, get_db
 from .rate_limit import limiter
-from .routes import dashboard, support_chat, verify, watermark, webhook
-from .security import require_api_key
+from .routes import auth, dashboard, support_chat, verify, watermark, webhook
 
-# Crea las tablas si no existen (para producción real, mejor usar Alembic).
+# Crea las tablas si no existen (para producción real, mejor usar Alembic) y
+# aplica los ajustes mínimos de esquema/datos que necesita el login real.
 Base.metadata.create_all(bind=engine)
+run_startup_tasks(engine)
 
 app = FastAPI(
     title="Leak Tracker API",
@@ -27,8 +30,9 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # .env con la URL real de tu web (p.ej. "https://tuweb.com"), separadas por
 # comas si necesitas más de una.
 # Nota: allow_credentials=False porque no usamos cookies de sesión, solo la
-# cabecera X-API-Key — así podemos combinar "*" con cualquier origen sin que
-# el navegador lo bloquee (los navegadores prohíben "*" + credentials=True).
+# cabecera Authorization con el token del login — así podemos combinar "*"
+# con cualquier origen sin que el navegador lo bloquee (los navegadores
+# prohíben "*" + credentials=True).
 allowed_origins = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 app.add_middleware(
     CORSMiddleware,
@@ -38,6 +42,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router, tags=["auth"])
 app.include_router(watermark.router, tags=["watermark"])
 app.include_router(verify.router, tags=["verify"])
 app.include_router(webhook.router, tags=["webhook"])
@@ -54,11 +59,15 @@ def root():
     "/recipients",
     response_model=schemas.RecipientOut,
     tags=["recipients"],
-    dependencies=[Depends(require_api_key)],
 )
 @limiter.limit("10/minute")
-def create_recipient(request: Request, recipient: schemas.RecipientCreate, db: Session = Depends(get_db)):
-    db_recipient = models.Recipient(**recipient.model_dump())
+def create_recipient(
+    request: Request,
+    recipient: schemas.RecipientCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    db_recipient = models.Recipient(**recipient.model_dump(), owner_id=current_user.id)
     db.add(db_recipient)
     db.commit()
     db.refresh(db_recipient)
@@ -69,7 +78,12 @@ def create_recipient(request: Request, recipient: schemas.RecipientCreate, db: S
     "/recipients",
     response_model=list[schemas.RecipientOut],
     tags=["recipients"],
-    dependencies=[Depends(require_api_key)],
 )
-def list_recipients(db: Session = Depends(get_db)):
-    return db.query(models.Recipient).all()
+def list_recipients(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    query = db.query(models.Recipient)
+    if current_user.role != models.ROLE_ADMIN:
+        query = query.filter_by(owner_id=current_user.id)
+    return query.all()

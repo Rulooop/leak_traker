@@ -2,18 +2,29 @@
 -- SQLAlchemy crea estas tablas automáticamente al arrancar la app, pero tener el
 -- SQL a mano ayuda a documentar la BBDD como entregable independiente.
 
+CREATE TABLE users (
+    id             SERIAL PRIMARY KEY,
+    email          VARCHAR NOT NULL UNIQUE,
+    password_hash  VARCHAR NOT NULL,
+    role           VARCHAR NOT NULL DEFAULT 'user',   -- 'admin' o 'user'
+    plan           VARCHAR NOT NULL DEFAULT 'free',   -- 'free' o 'pro'
+    created_at     TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE tracks (
     id          SERIAL PRIMARY KEY,
     title       VARCHAR NOT NULL,
     artist      VARCHAR NOT NULL,
+    owner_id    INTEGER REFERENCES users(id),
     created_at  TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE recipients (
-    id      SERIAL PRIMARY KEY,
-    name    VARCHAR NOT NULL,
-    email   VARCHAR,
-    notes   VARCHAR
+    id        SERIAL PRIMARY KEY,
+    name      VARCHAR NOT NULL,
+    email     VARCHAR,
+    notes     VARCHAR,
+    owner_id  INTEGER REFERENCES users(id)
 );
 
 CREATE TABLE watermarked_files (

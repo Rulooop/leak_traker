@@ -18,9 +18,10 @@ frontend (dashboard de una sola página, HTML/CSS/JS sin frameworks)
       │
       ▼
 backend (FastAPI)
+   ├── /auth/register /auth/login /auth/me → cuenta con email+contraseña, sesión por token (JWT)
    ├── /watermark                          → incrusta el código y guarda el registro
    ├── /verify                             → extrae el código de un archivo sospechoso y dispara alerta si hay match
-   ├── /recipients                         → crear y listar destinatarios
+   ├── /recipients                         → crear y listar destinatarios (de la cuenta que ha iniciado sesión)
    ├── /stats /tracks /watermarked-files   → endpoints de solo lectura que alimentan el dashboard
    ├── /leak-detections                    → historial de verificaciones
    ├── /watermarked-files/{id}/download    → descarga autenticada de una copia marcada
@@ -30,6 +31,11 @@ backend (FastAPI)
       ▼
 BBDD (SQLite en dev / PostgreSQL en producción, vía docker-compose)
 ```
+
+Multiusuario: cada cuenta (`users.role = "user"`) solo ve sus propias canciones,
+destinatarios y filtraciones. La cuenta admin (`role = "admin"`) ve las de
+todo el mundo — pensado para más adelante gestionar planes de pago
+(`users.plan`, hoy sin cobro real todavía).
 
 ## Stack tecnológico
 
@@ -64,11 +70,12 @@ Ya no es solo el esqueleto inicial: el backend, el panel web, las alertas y el
 despliegue están funcionando de verdad, en producción. Contiene:
 
 - [x] Estructura de carpetas
-- [x] Modelo de datos (4 tablas)
+- [x] Modelo de datos (5 tablas)
 - [x] Prototipo funcional de watermark inaudible (embed/extract con FSK en alta frecuencia)
 - [x] API completa con FastAPI (watermark, verify, recipients, dashboard, descarga de archivos)
-- [x] Autenticación por API key, límite de tamaño de archivo y rate limiting (ver "Seguridad" abajo)
-- [x] Frontend propio (dashboard, alta de canciones, verificación, destinatarios, ajustes de conexión)
+- [x] Login real: cuentas con email + contraseña hasheada (bcrypt) en BBDD, sesión con JWT, roles admin/usuario y datos aislados por cuenta
+- [x] Límite de tamaño de archivo y rate limiting (ver "Seguridad" abajo)
+- [x] Frontend propio (login/registro, dashboard, alta de canciones, verificación, destinatarios, cuenta)
 - [x] Dashboard interactivo: chat de soporte con IA (Claude), explicador del watermark, gráfica de tendencia con tooltips, filtros por estado/fecha y animaciones
 - [x] Identidad visual propia: logo real, paleta de marca, navbar superior y sidebar reestilizado, dashboard en grid de 2 columnas con "Actividad reciente"
 - [x] Validación de la cabecera real del archivo subido (RIFF/WAVE) en `/watermark` y `/verify`, no solo la extensión `.wav`
@@ -80,14 +87,22 @@ despliegue están funcionando de verdad, en producción. Contiene:
 
 Decisiones de seguridad tomadas en este proyecto, y por qué:
 
-**Autenticación por API key.** Todos los endpoints que crean o consultan datos
-(`/watermark`, `/verify`, `/recipients`) exigen la cabecera `X-API-Key` con una
-clave que se define en `.env` (nunca en el código, nunca en GitHub — está en
-`.gitignore`). Sin esto, cualquiera que encontrara la URL del servidor podría
-subir canciones o consultar destinatarios. La comparación de la clave usa
-`secrets.compare_digest()` en vez de `==`, para evitar timing attacks (que
-alguien pueda adivinar la clave carácter a carácter midiendo cuánto tarda en
-responder el servidor).
+**Login real, no una clave compartida.** Todos los endpoints que crean o
+consultan datos (`/watermark`, `/verify`, `/recipients`, dashboard...) exigen
+haber iniciado sesión: `POST /auth/register` o `/auth/login` devuelven un
+token de sesión (JWT, firmado con `SECRET_KEY` — nunca en el código, nunca en
+GitHub, está en `.gitignore`) que el frontend manda como cabecera
+`Authorization: Bearer <token>`. Las contraseñas nunca se guardan en claro:
+se hashean con `bcrypt` antes de tocar la BBDD. El token caduca a los 7 días.
+
+**Datos aislados por cuenta.** Cada `Track`/`Recipient` tiene un `owner_id`.
+Un usuario normal (`role = "user"`) solo ve y puede operar sobre sus propias
+canciones, destinatarios y filtraciones — tanto en las consultas del
+dashboard como en `/watermark` (no puede usar un destinatario de otra
+cuenta) y en `/verify` (una filtración solo hace match contra tus propios
+watermarks, nunca contra los de otra cuenta). La cuenta admin (`role =
+"admin"`) ve los datos de todo el mundo, pensado para la futura gestión de
+planes de pago.
 
 **Límite de tamaño de archivo (50MB).** Los endpoints que reciben archivos leen
 el cuerpo en trozos de 1MB y cortan la conexión en cuanto se supera el límite,
@@ -107,16 +122,17 @@ a partir del nombre que manda quien sube el archivo. Esto evita ataques de
 `../../etc/passwd` para intentar escribir fuera de la carpeta de subidas).
 
 **Fallo seguro si falta configuración.** Si arrancas el servidor sin haber
-definido `API_KEY` en el `.env`, la API responde con error 500 en vez de
+definido `SECRET_KEY` en el `.env`, la API responde con error 500 en vez de
 dejar los endpoints abiertos sin querer por un despiste de configuración.
 
 **Descarga de archivos marcados solo vía endpoint autenticado.** La carpeta
 `uploads/` no se sirve como estáticos (ni en el backend ni en el nginx del
 frontend, que solo monta `frontend/`): la única forma de descargar una copia
-marcada es `/watermarked-files/{id}/download`, protegido con `X-API-Key`.
+marcada es `/watermarked-files/{id}/download`, protegido por sesión y
+limitado a copias de tu propia cuenta.
 
 **Chat de soporte con IA sin exponer secretos.** `/support-chat` sigue las
-mismas reglas que el resto de la API (`X-API-Key`, rate limiting) y usa
+mismas reglas que el resto de la API (login, rate limiting) y usa
 `ANTHROPIC_API_KEY` solo desde variables de entorno, nunca en el código. El
 system prompt instruye explícitamente al modelo a no revelar claves, tokens
 ni detalles internos de infraestructura, y si la clave no está configurada
@@ -136,6 +152,11 @@ con un 400 en vez de un 500 (`backend/app/files.py`,
   Cloudflare por el Tunnel — ver "Despliegue y comunicación" en el Stack).
 - El límite de rate limiting es por IP en memoria — en un despliegue con
   varias réplicas del backend, habría que centralizarlo (p.ej. con Redis).
+- No hay verificación de email ni límite de intentos de login por cuenta
+  (solo el rate limiting general por IP en `/auth/login`).
+- El registro es público (cualquiera con el enlace puede crear una cuenta)
+  — es la decisión tomada por ahora; si se quisiera cerrar, habría que
+  añadir invitaciones o aprobación manual del admin.
 
 La idea es completar cada pieza pendiente como commits separados (a poder ser,
 pidiéndoselo a Claude conectado a este repo), para que el historial de commits
@@ -147,9 +168,11 @@ cuente la historia de cómo se construyó.
 
 ```bash
 cp .env.example .env
-# Rellena API_KEY en el .env, por ejemplo con:
+# Rellena SECRET_KEY en el .env, por ejemplo con:
 #   openssl rand -hex 32
 # ALLOWED_ORIGINS puede dejarse como "*" en local.
+# Opcional: rellena ADMIN_EMAIL/ADMIN_PASSWORD para que esa cuenta se cree
+# como admin al arrancar (si no, simplemente regístrate desde el dashboard).
 
 docker-compose up -d --build
 ```
@@ -157,8 +180,8 @@ docker-compose up -d --build
 Esto levanta 3 servicios: `db` (PostgreSQL), `backend` (FastAPI en el puerto
 `8000`) y `frontend` (nginx sirviendo el dashboard en el puerto `8080`).
 Comprueba que los tres están arriba con `docker-compose ps`. Abre
-http://localhost:8080 para el dashboard y http://localhost:8000/docs para la
-API por Swagger.
+http://localhost:8080 y regístrate desde la pantalla de login para acceder al
+dashboard, o http://localhost:8000/docs para la API por Swagger.
 
 ### Opción B — backend suelto, sin Docker
 
@@ -168,17 +191,18 @@ python -m venv venv
 source venv/bin/activate   # en Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
-# Define tu API key antes de arrancar (o cópiala en un .env, ver .env.example)
-export API_KEY="lo-que-tu-quieras"   # en Windows PowerShell: $env:API_KEY="lo-que-tu-quieras"
+# Define tu SECRET_KEY antes de arrancar (o cópiala en un .env, ver .env.example)
+export SECRET_KEY="lo-que-tu-quieras"   # en Windows PowerShell: $env:SECRET_KEY="lo-que-tu-quieras"
 
 uvicorn app.main:app --reload
 ```
 
-Abre http://localhost:8000/docs para probar los endpoints desde Swagger — en
-cada petición tendrás que añadir la cabecera `X-API-Key` con el valor que
-hayas puesto arriba (Swagger tiene un botón "Authorize" para esto, o puedes
-añadirla a mano en cada request). Con esta opción el frontend (`frontend/index.html`)
-hay que abrirlo suelto y configurar la URL/API key desde su pantalla de "Ajustes".
+Abre http://localhost:8000/docs para probar los endpoints desde Swagger:
+primero `POST /auth/register` (o `/auth/login`) para conseguir un
+`access_token`, y luego pégalo en el botón "Authorize" de Swagger (como
+`Bearer <token>`) para que se añada a las siguientes peticiones. Con esta
+opción el frontend (`frontend/index.html`) hay que abrirlo suelto y
+configurar la URL de la API desde su pantalla de "Cuenta".
 
 ## Probar el watermark por consola (sin la API)
 
@@ -194,5 +218,5 @@ python -m app.watermark extract ejemplo_marcado.wav
 2. Implementa un escáner automático que busque filtraciones periódicamente en
    fuentes externas (webs, foros) en vez de depender solo de la subida manual
    a `/verify`.
-3. Añade un login de verdad (usuario/contraseña o similar) para no tener que
-   pegar la `API_KEY` a mano en los "Ajustes" del frontend cada vez.
+3. Cobro real (Stripe) para el plan "pro" — la columna `users.plan` y el
+   rol admin ya están, falta la integración de pago en sí.

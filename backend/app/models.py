@@ -5,6 +5,29 @@ from sqlalchemy.orm import relationship
 
 from .database import Base
 
+ROLE_ADMIN = "admin"
+ROLE_USER = "user"
+
+PLAN_FREE = "free"
+PLAN_PRO = "pro"
+
+
+class User(Base):
+    """Cuenta de acceso al dashboard. `role` distingue admin de usuario normal,
+    `plan` es la base para limitar uso por cuenta cuando se implemente el cobro."""
+
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, nullable=False, unique=True, index=True)
+    password_hash = Column(String, nullable=False)
+    role = Column(String, nullable=False, default=ROLE_USER)
+    plan = Column(String, nullable=False, default=PLAN_FREE)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    tracks = relationship("Track", back_populates="owner")
+    recipients = relationship("Recipient", back_populates="owner")
+
 
 class Track(Base):
     """Una canción original subida al sistema."""
@@ -14,8 +37,10 @@ class Track(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
     artist = Column(String, nullable=False)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
+    owner = relationship("User", back_populates="tracks")
     watermarked_files = relationship("WatermarkedFile", back_populates="track")
 
 
@@ -28,7 +53,9 @@ class Recipient(Base):
     name = Column(String, nullable=False)
     email = Column(String, nullable=True)
     notes = Column(String, nullable=True)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
+    owner = relationship("User", back_populates="recipients")
     watermarked_files = relationship("WatermarkedFile", back_populates="recipient")
 
 

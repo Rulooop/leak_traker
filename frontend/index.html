@@ -77,6 +77,17 @@
     padding:7px 12px; border-radius:99px;
   }
 
+  /* ---------- pantalla de login / registro ---------- */
+  #appShell{ display:flex; flex-direction:column; flex:1; min-height:0; }
+  .auth-screen{
+    flex:1; display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .auth-card{ width:100%; max-width:380px; }
+  .auth-brand{ display:flex; align-items:center; gap:10px; justify-content:center; margin-bottom:24px; }
+  .auth-toggle{ text-align:center; margin-top:16px; font-size:13px; color:var(--dim); }
+  .auth-toggle button{ background:none; border:none; color:var(--accent); font-weight:600; padding:0; cursor:pointer; }
+  .auth-error{ color:var(--danger); font-size:12.5px; margin-top:10px; min-height:1px; }
+
   /* ---------- layout ---------- */
   .app{ display:flex; flex:1; min-height:0; }
 
@@ -374,6 +385,9 @@
 </head>
 <body>
 
+<div id="authScreen" class="auth-screen" hidden></div>
+
+<div id="appShell" hidden>
 <div class="topnav">
   <div class="topnav-brand">
     <img src="assets/logo-icon.png" alt="LeakTracker" class="topnav-logo" />
@@ -385,7 +399,7 @@
       <svg width="17" height="17" viewBox="0 0 17 17" fill="none"><path d="M8.5 2.5a4 4 0 0 0-4 4v2.3c0 .5-.17 1-.5 1.4l-1 1.3c-.5.6-.05 1.5.7 1.5h9.6c.75 0 1.2-.9.7-1.5l-1-1.3c-.33-.4-.5-.9-.5-1.4V6.5a4 4 0 0 0-4-4z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M7 14a1.5 1.5 0 0 0 3 0" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
       <span class="notif-badge" id="notifBadge" hidden>0</span>
     </button>
-    <button class="icon-btn" id="gotoSettingsBtn" title="Ajustes de conexión" aria-label="Ajustes">
+    <button class="icon-btn" id="gotoSettingsBtn" title="Cuenta" aria-label="Cuenta">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/><path d="M8 1.5v2M8 12.5v2M14.5 8h-2M3.5 8h-2M12.5 3.5l-1.4 1.4M4.9 11.1l-1.4 1.4M12.5 12.5l-1.4-1.4M4.9 4.9L3.5 3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
     </button>
     <div class="conn-pill">
@@ -417,7 +431,7 @@
       </button>
       <button class="nav-item" data-view="settings">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/><path d="M8 1.5v2M8 12.5v2M14.5 8h-2M3.5 8h-2M12.5 3.5l-1.4 1.4M4.9 11.1l-1.4 1.4M12.5 12.5l-1.4-1.4M4.9 4.9L3.5 3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-        Ajustes de conexión
+        Cuenta
       </button>
     </nav>
 
@@ -441,12 +455,14 @@
     <div class="content" id="content"></div>
   </div>
 </div>
+</div>
 
 <script>
 /* ---------- estado y config ---------- */
 const state = {
   apiUrl: localStorage.getItem('lt_apiUrl') || 'http://localhost:8000',
-  apiKey: localStorage.getItem('lt_apiKey') || '',
+  token: localStorage.getItem('lt_token') || '',
+  currentUser: null,
   view: 'dashboard',
   recipients: [],
   chatHistory: [], // solo en memoria, se pierde al recargar la página
@@ -464,11 +480,9 @@ function formatCode(code){
   return 'LT-' + String(code).padStart(6, '0');
 }
 
-function saveConfig(url, key){
+function saveApiUrl(url){
   state.apiUrl = url.replace(/\/$/, '');
-  state.apiKey = key;
   localStorage.setItem('lt_apiUrl', state.apiUrl);
-  localStorage.setItem('lt_apiKey', state.apiKey);
 }
 
 async function api(path, options = {}){
@@ -476,9 +490,13 @@ async function api(path, options = {}){
     ...options,
     headers: {
       ...(options.headers || {}),
-      'X-API-Key': state.apiKey,
+      'Authorization': `Bearer ${state.token}`,
     },
   });
+  const isAuthEndpoint = path === '/auth/login' || path === '/auth/register';
+  if(res.status === 401 && !isAuthEndpoint){
+    logout();
+  }
   if(!res.ok){
     let detail = res.statusText;
     try{ detail = (await res.json()).detail || detail; }catch(e){}
@@ -671,6 +689,93 @@ async function sendChatMessage(){
   }
 }
 
+/* ---------- login / registro ---------- */
+let authMode = 'login';
+
+function renderAuth(){
+  const el = document.getElementById('authScreen');
+  el.innerHTML = `
+    <div class="card auth-card">
+      <div class="auth-brand">
+        <img src="assets/logo-icon.png" alt="LeakTracker" style="height:30px;" />
+        <div class="brand-text" style="font-size:17px;">LEAK<span class="slash">//</span><span class="brand-gradient">TRACKER</span></div>
+      </div>
+      <label>Email</label>
+      <input type="email" id="authEmail" placeholder="tu@email.com" autocomplete="username" />
+      <label>Contraseña</label>
+      <input type="password" id="authPassword" placeholder="mínimo 8 caracteres" autocomplete="${authMode === 'login' ? 'current-password' : 'new-password'}" />
+      <button class="btn-primary btn-block" id="authSubmit">${authMode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}</button>
+      <div class="auth-error" id="authError"></div>
+      <div class="auth-toggle">
+        ${authMode === 'login'
+          ? '¿No tienes cuenta? <button id="authToggle">Crea una</button>'
+          : '¿Ya tienes cuenta? <button id="authToggle">Inicia sesión</button>'}
+      </div>
+    </div>
+  `;
+
+  document.getElementById('authToggle').addEventListener('click', () => {
+    authMode = authMode === 'login' ? 'register' : 'login';
+    renderAuth();
+  });
+  document.getElementById('authSubmit').addEventListener('click', submitAuth);
+  el.querySelectorAll('input').forEach(input => {
+    input.addEventListener('keydown', (e) => { if(e.key === 'Enter') submitAuth(); });
+  });
+}
+
+async function submitAuth(){
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  const errEl = document.getElementById('authError');
+  errEl.textContent = '';
+  if(!email || !password){ errEl.textContent = 'Rellena el email y la contraseña.'; return; }
+
+  const btn = document.getElementById('authSubmit');
+  btn.disabled = true;
+  try{
+    const path = authMode === 'login' ? '/auth/login' : '/auth/register';
+    const result = await api(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    await applySession(result.access_token);
+  }catch(e){
+    errEl.textContent = e.message;
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+async function applySession(token){
+  state.token = token;
+  localStorage.setItem('lt_token', token);
+  state.currentUser = await api('/auth/me');
+  showApp();
+}
+
+function logout(){
+  state.token = '';
+  state.currentUser = null;
+  localStorage.removeItem('lt_token');
+  showAuth();
+}
+
+function showApp(){
+  document.getElementById('authScreen').hidden = true;
+  document.getElementById('appShell').hidden = false;
+  checkConnection();
+  navigate('dashboard');
+}
+
+function showAuth(){
+  document.getElementById('appShell').hidden = true;
+  document.getElementById('authScreen').hidden = false;
+  authMode = 'login';
+  renderAuth();
+}
+
 /* ---------- navegación ---------- */
 document.querySelectorAll('.nav-item[data-view]').forEach(btn => {
   btn.addEventListener('click', () => navigate(btn.dataset.view));
@@ -681,7 +786,7 @@ const titles = {
   'new-track': 'Nueva canción',
   verify: 'Verificar filtración',
   recipients: 'Destinatarios',
-  settings: 'Ajustes de conexión',
+  settings: 'Cuenta',
 };
 
 function navigate(view){
@@ -1305,27 +1410,38 @@ async function renderRecipients(el){
 
 /* ---------- vista: ajustes ---------- */
 function renderSettings(el){
+  const user = state.currentUser;
   el.innerHTML = `
+    <div class="card" style="max-width:520px; margin-bottom:20px;">
+      <div class="section-title" style="margin-top:0;">Cuenta</div>
+      <div style="font-size:13.5px;"><strong>${user ? user.email : '—'}</strong></div>
+      <div style="color:var(--dim); font-size:12.5px; margin-top:4px;">
+        Rol: ${user && user.role === 'admin' ? 'Administrador' : 'Usuario'} ·
+        Plan: ${user && user.plan === 'pro' ? 'Pro' : 'Free'}
+      </div>
+      <button class="btn-ghost btn-block" id="logoutBtn" style="margin-top:16px;">Cerrar sesión</button>
+    </div>
+
     <div class="card" style="max-width:520px;">
+      <div class="section-title" style="margin-top:0;">URL de la API</div>
       <div class="settings-row">
         <div>
-          <label>URL de la API</label>
           <input type="text" id="sUrl" value="${state.apiUrl}" />
         </div>
       </div>
-      <label>API Key</label>
-      <input type="password" id="sKey" value="${state.apiKey}" placeholder="la que definiste en tu .env" />
       <button class="btn-primary btn-block" id="sSave">Guardar y comprobar conexión</button>
       <div id="sStatus" style="margin-top:14px; font-size:13px; color:var(--dim);"></div>
     </div>
   `;
 
+  document.getElementById('logoutBtn').addEventListener('click', logout);
+
   document.getElementById('sSave').addEventListener('click', async () => {
-    saveConfig(document.getElementById('sUrl').value, document.getElementById('sKey').value);
+    saveApiUrl(document.getElementById('sUrl').value);
     const ok = await checkConnection();
     document.getElementById('sStatus').innerHTML = ok
       ? '<span style="color:var(--success);">Conexión correcta.</span>'
-      : '<span style="color:var(--danger);">No se ha podido conectar. Revisa la URL y la API key.</span>';
+      : '<span style="color:var(--danger);">No se ha podido conectar. Revisa la URL.</span>';
   });
 }
 
@@ -1335,8 +1451,16 @@ document.getElementById('notifBtn').addEventListener('click', () => navigate('da
 
 (async function init(){
   renderChatWidget();
-  checkConnection();
-  navigate(state.apiKey ? 'dashboard' : 'settings');
+  if(state.token){
+    try{
+      state.currentUser = await api('/auth/me');
+      showApp();
+    }catch(e){
+      showAuth();
+    }
+  }else{
+    showAuth();
+  }
 })();
 </script>
 </body>

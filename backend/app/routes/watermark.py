@@ -6,10 +6,10 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
+from ..auth import get_current_user
 from ..database import get_db
 from ..files import read_and_check_size, validate_wav_signature
 from ..rate_limit import limiter
-from ..security import require_api_key
 from ..watermark import embed_watermark
 
 router = APIRouter()
@@ -28,7 +28,7 @@ def _generate_unique_code(db: Session) -> int:
     raise HTTPException(status_code=500, detail="No se pudo generar un código único, inténtalo de nuevo.")
 
 
-@router.post("/watermark", response_model=schemas.WatermarkedFileOut, dependencies=[Depends(require_api_key)])
+@router.post("/watermark", response_model=schemas.WatermarkedFileOut)
 @limiter.limit("10/minute")
 async def create_watermarked_file(
     request: Request,
@@ -37,8 +37,12 @@ async def create_watermarked_file(
     recipient_id: int = Form(...),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
 ):
-    recipient = db.query(models.Recipient).get(recipient_id)
+    recipient_query = db.query(models.Recipient).filter_by(id=recipient_id)
+    if current_user.role != models.ROLE_ADMIN:
+        recipient_query = recipient_query.filter_by(owner_id=current_user.id)
+    recipient = recipient_query.first()
     if not recipient:
         raise HTTPException(status_code=404, detail="Destinatario no encontrado. Créalo primero en /recipients.")
 
@@ -48,7 +52,7 @@ async def create_watermarked_file(
     file_bytes = await read_and_check_size(file)
     validate_wav_signature(file_bytes)
 
-    track = models.Track(title=title, artist=artist)
+    track = models.Track(title=title, artist=artist, owner_id=current_user.id)
     db.add(track)
     db.flush()  # para obtener track.id sin hacer commit todavía
 
@@ -84,10 +88,17 @@ async def create_watermarked_file(
     return watermarked_file
 
 
-@router.get("/watermarked-files/{file_id}/download", dependencies=[Depends(require_api_key)])
-def download_watermarked_file(file_id: int, db: Session = Depends(get_db)):
+@router.get("/watermarked-files/{file_id}/download")
+def download_watermarked_file(
+    file_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     watermarked_file = db.query(models.WatermarkedFile).get(file_id)
     if not watermarked_file:
+        raise HTTPException(status_code=404, detail="Archivo no encontrado.")
+
+    if current_user.role != models.ROLE_ADMIN and watermarked_file.track.owner_id != current_user.id:
         raise HTTPException(status_code=404, detail="Archivo no encontrado.")
 
     path = Path(watermarked_file.file_path)

@@ -5,7 +5,9 @@ Envío de alertas cuando se detecta una filtración, vía bot de Telegram.
 import os
 
 import httpx
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+
+from ..auth import get_current_user
 
 router = APIRouter()
 
@@ -33,7 +35,7 @@ def send_alert(message: str) -> bool:
         return False
 
 
-@router.post("/webhook-test")
+@router.post("/webhook-test", dependencies=[Depends(get_current_user)])
 def test_webhook():
     """Endpoint de prueba para disparar una alerta manualmente."""
     sent = send_alert("🔔 Alerta de prueba desde Leak Tracker")

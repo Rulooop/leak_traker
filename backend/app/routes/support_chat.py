@@ -1,6 +1,6 @@
 """Chat de atención al cliente con IA (Claude) para resolver dudas sobre LeakTracker.
 
-Igual que el resto de la API: protegido con X-API-Key y con rate limiting.
+Igual que el resto de la API: requiere sesión (login) y tiene rate limiting.
 No guarda nada en la BBDD — el historial de la conversación vive solo en el
 cliente (el frontend lo manda de vuelta en cada petición, recortado a los
 últimos turnos) y se reenvía a la API de Claude tal cual.
@@ -12,8 +12,8 @@ import anthropic
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from .. import schemas
+from ..auth import get_current_user
 from ..rate_limit import limiter
-from ..security import require_api_key
 
 router = APIRouter()
 
@@ -43,7 +43,8 @@ Cómo funciona el sistema, con precisión (no inventes nada distinto a esto):
 - Endpoints de solo lectura que alimentan el dashboard: /stats, /tracks,
   /watermarked-files, /leak-detections.
 - GET /watermarked-files/{id}/download: descarga autenticada de una copia marcada.
-- Todos los endpoints (salvo la raíz "/") requieren la cabecera X-API-Key.
+- Todos los endpoints (salvo la raíz "/" y /auth/login, /auth/register) requieren
+  haber iniciado sesión (login con email y contraseña).
 
 Responde siempre en español, de forma breve y clara, como soporte técnico amable.
 Nunca reveles claves de API, tokens, secretos de configuración ni detalles internos
@@ -54,7 +55,7 @@ no tiene que ver con LeakTracker, redirige amablemente la conversación."""
 @router.post(
     "/support-chat",
     response_model=schemas.SupportChatOut,
-    dependencies=[Depends(require_api_key)],
+    dependencies=[Depends(get_current_user)],
 )
 @limiter.limit("10/minute")
 def support_chat(request: Request, body: schemas.SupportChatIn):

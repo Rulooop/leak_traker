@@ -254,9 +254,37 @@ WAV con cabecera válida pero contenido corrupto dé 400 en vez de reventar
 con un 500. Probado en local contra el backend reconstruido: un archivo de
 texto renombrado a `.wav` se rechaza, un WAV real sigue procesándose bien.
 
+## 22 de septiembre — Login real, multiusuario y roles
+
+Sustituida la `API_KEY` compartida por un login de verdad: tabla `users`
+(email, contraseña hasheada con `bcrypt`, `role` admin/usuario, `plan`
+free/pro pensando en el cobro futuro), `POST /auth/register` y `/auth/login`
+devuelven un token de sesión (JWT, `SECRET_KEY`), y todos los endpoints que
+antes exigían `X-API-Key` ahora exigen `Authorization: Bearer <token>`
+(`backend/app/auth.py`, `get_current_user`/`require_admin`).
+
+**Aislamiento por cuenta.** `Track` y `Recipient` tienen `owner_id`. Un
+usuario normal solo ve/usa sus propias canciones y destinatarios en el
+dashboard, en `/watermark` (no puede usar un destinatario ajeno) y en
+`/verify` (solo hace match contra sus propios watermarks). El rol admin ve
+los datos de todo el mundo — pensado para más adelante gestionar planes.
+
+**Migración sin Alembic.** Como la BBDD de producción ya tenía `tracks`/
+`recipients` sin `owner_id`, añadido `backend/app/bootstrap.py`: al arrancar,
+aplica `ALTER TABLE ADD COLUMN` (ignorando el error si ya existe) y siembra
+o promociona a admin la cuenta de `ADMIN_EMAIL`/`ADMIN_PASSWORD` del `.env`,
+asignándole las canciones/destinatarios antiguos que se quedaron sin dueño.
+
+**Frontend.** Pantalla de login/registro nueva (reemplaza la home directa al
+dashboard); "Ajustes" pasó a llamarse "Cuenta" y ahora muestra email/rol/plan
+y un botón de cerrar sesión, en vez del campo para pegar la API key a mano.
+
+Probado en Docker: registro, login, un usuario normal no ve las canciones ni
+destinatarios de otro, la cuenta admin sí ve las de todos.
+
 ## Pendiente para la próxima sesión
 
 - Implementar el escáner automático de filtraciones en fuentes externas.
-- Añadir un login de verdad al frontend, para no depender de pegar la
-  `API_KEY` a mano en "Ajustes".
+- Cobro real (Stripe) para el plan "pro" — la estructura (`users.plan`, rol
+  admin) ya está.
 - Migrar de `docker-compose` v1.29.2 a `docker compose` (plugin v2) en la VM.

@@ -66,10 +66,14 @@ Detalle completo en la sección "Stack tecnológico" del `README.md`.
 
 ### 3.1 Base de datos (BBDD)
 
-4 tablas relacionadas entre sí:
+5 tablas relacionadas entre sí:
 
-- **`tracks`** — canciones originales subidas.
-- **`recipients`** — destinatarios (colaboradores, sellos, prensa...).
+- **`users`** — cuentas de acceso: email, contraseña hasheada, rol
+  (admin/usuario) y plan (free/pro).
+- **`tracks`** — canciones originales subidas, con su `owner_id` (de qué
+  cuenta son).
+- **`recipients`** — destinatarios (colaboradores, sellos, prensa...), con
+  su `owner_id`.
 - **`watermarked_files`** — registro de cada copia marcada: qué código se le
   puso, a qué canción y a qué destinatario corresponde.
 - **`leak_detections`** — cada vez que se sube un archivo sospechoso, se
@@ -95,20 +99,24 @@ extremo:
 
 ### 3.3 API (FastAPI)
 
+- `POST /auth/register` / `POST /auth/login` — crea cuenta o inicia sesión
+  (email + contraseña), devuelve un token de sesión (JWT). `GET /auth/me`
+  — datos de la cuenta que ha iniciado sesión.
 - `POST /watermark` — sube una canción + destinatario, devuelve la copia
-  marcada y guarda el registro.
+  marcada y guarda el registro a nombre de la cuenta que hizo la petición.
 - `POST /verify` — sube un archivo sospechoso, extrae el código y dice de
-  quién es la filtración si hay coincidencia (y dispara la alerta).
-- `POST /recipients` / `GET /recipients` — gestión de destinatarios.
+  quién es la filtración si hay coincidencia entre las canciones de esa
+  cuenta (y dispara la alerta).
+- `POST /recipients` / `GET /recipients` — gestión de destinatarios, por cuenta.
 - `GET /stats` / `GET /tracks` / `GET /watermarked-files` /
   `GET /leak-detections` — endpoints de solo lectura que alimentan el
-  dashboard.
+  dashboard, filtrados por cuenta (salvo para el admin, que ve todo).
 - `GET /watermarked-files/{id}/download` — descarga autenticada de una copia
-  marcada (protegida con `X-API-Key`, no es un archivo estático).
+  marcada (requiere sesión y ser el dueño, no es un archivo estático).
 - `POST /webhook-test` — dispara una alerta de prueba manualmente.
 - `POST /support-chat` — chat de soporte con IA (Claude Haiku 4.5) para
   resolver dudas sobre el funcionamiento del sistema; protegido igual que el
-  resto (`X-API-Key` + rate limiting), usa `ANTHROPIC_API_KEY` desde `.env`.
+  resto (login + rate limiting), usa `ANTHROPIC_API_KEY` desde `.env`.
 
 ### 3.4 Alertas por Telegram (conectado y probado)
 
@@ -118,44 +126,50 @@ del stub genérico de Incoming Webhook que había al principio. El token del
 bot y el `chat_id` viven en `.env` (nunca en el código ni en el repo).
 Probado end-to-end dos veces: con `/webhook-test` y con un caso real completo
 (crear destinatario → generar copia marcada → "filtrarla" → `/verify`) — en
-ambos casos la alerta llegó sola a Telegram. La `API_KEY` y el token del bot
-se rotaron una vez tras quedar expuestos accidentalmente.
+ambos casos la alerta llegó sola a Telegram. La antigua `API_KEY` y el token
+del bot se rotaron una vez tras quedar expuestos accidentalmente (la
+`API_KEY` ya no existe, ver 3.5).
 
 ### 3.5 Seguridad
 
 Medidas implementadas y documentadas en el propio `README.md`:
 
-- **Autenticación por API key** (cabecera `X-API-Key`) en todos los
-  endpoints que crean o consultan datos, usando comparación segura
-  (`secrets.compare_digest`) para evitar *timing attacks*.
+- **Login real** en vez de una clave compartida: cuentas con email +
+  contraseña hasheada (`bcrypt`) en una tabla `users`, sesión mediante un
+  token firmado (JWT, `SECRET_KEY`) que caduca a los 7 días.
+- **Datos aislados por cuenta**: cada canción/destinatario tiene un
+  `owner_id`; un usuario normal solo ve y usa los suyos (incluida la
+  búsqueda de coincidencias en `/verify`). El rol admin ve los de todo el
+  mundo, pensado para gestionar planes de pago más adelante (`users.plan`,
+  sin Stripe integrado todavía).
 - **Límite de tamaño de archivo** (50MB) — se corta la subida antes de
   escribir nada a disco, evitando ataques de saturación.
 - **Rate limiting** (10 peticiones/minuto por IP) en los endpoints
-  sensibles, con `slowapi`.
+  sensibles, incluido `/auth/login` y `/auth/register`, con `slowapi`.
 - **Nombres de archivo generados por el servidor**, nunca por el cliente —
   evita ataques de *path traversal*.
-- **Fallo seguro**: si falta la `API_KEY` en la configuración, el servidor
-  da error en vez de quedar abierto por descuido.
+- **Fallo seguro**: si falta la `SECRET_KEY` en la configuración, el
+  servidor da error en vez de quedar abierto por descuido.
 - **Descarga solo vía endpoint autenticado**: la carpeta `uploads/` no se
   sirve como estáticos (ni en el backend ni en el nginx del frontend); la
   única forma de descargar una copia marcada es
-  `/watermarked-files/{id}/download`, protegido con `X-API-Key`.
+  `/watermarked-files/{id}/download`, que exige sesión y ser el dueño.
 - **CORS restringido en producción**: `ALLOWED_ORIGINS` está fijado a
   `https://leaktracker.cloud` (ya no `*`), ahora que la web es pública de
   verdad.
-
-Todas estas medidas se probaron activamente (no solo se escribieron): se
-lanzó el servidor y se comprobó con peticiones reales que cada protección
-responde como debe (401 sin clave, 413 con archivo demasiado grande, etc.).
-
 - **Validación del contenido real del archivo subido**: `/watermark` y
   `/verify` comprueban la cabecera RIFF/WAVE de los bytes recibidos, no solo
   la extensión `.wav` del nombre; un archivo corrupto o renombrado se
   rechaza con 400 antes de tocar disco.
 
+Todas estas medidas se probaron activamente (no solo se escribieron): se
+lanzó el servidor y se comprobó con peticiones reales que cada protección
+responde como debe (401 sin sesión, 413 con archivo demasiado grande, etc.).
+
 Pendiente de securizar (detalle y por qué en el `README.md`): HTTPS en
-local, y centralizar el rate limiting con Redis si algún día hay varias
-réplicas del backend.
+local, centralizar el rate limiting con Redis si algún día hay varias
+réplicas del backend, verificación de email y límite de intentos de login
+por cuenta.
 
 ### 3.6 Despliegue (en producción, probado de verdad)
 
@@ -237,7 +251,7 @@ construida:
 | Escáner automático de filtraciones en fuentes externas | Media | Aplazado a propósito (no lo pedía el enunciado); si se retoma, versión mínima con 1-2 fuentes con API oficial (YouTube/SoundCloud) + job programado, en vez de scraping genérico |
 | HTTPS en local | Baja | En producción ya lo da Cloudflare Tunnel; en desarrollo local sigue sin HTTPS |
 | Centralizar el rate limiting si hay varias réplicas del backend | Baja | Está en memoria por IP; solo relevante si se escala a más de una instancia (con una, como ahora, no es urgente) |
-| Login de verdad en el frontend (usuario/contraseña) | Media | Ahora mismo la autenticación es pegar la `API_KEY` a mano en "Ajustes"; un login evitaría tener que manejar la clave directamente en el navegador |
+| Cobro real (Stripe) para el plan "pro" | Media | La estructura ya está (`users.plan`, rol admin); falta la integración de pago y los límites de uso por plan |
 
 ---
 

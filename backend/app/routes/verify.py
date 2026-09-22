@@ -5,22 +5,23 @@ from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
+from ..auth import get_current_user
 from ..database import get_db
 from ..files import read_and_check_size, validate_wav_signature
 from ..rate_limit import limiter
-from ..security import require_api_key
 from ..watermark import extract_watermark
 from .webhook import send_alert
 
 router = APIRouter()
 
 
-@router.post("/verify", response_model=schemas.VerifyResult, dependencies=[Depends(require_api_key)])
+@router.post("/verify", response_model=schemas.VerifyResult)
 @limiter.limit("10/minute")
 async def verify_suspect_file(
     request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
 ):
     file_bytes = await read_and_check_size(file)
     validate_wav_signature(file_bytes)
@@ -41,9 +42,10 @@ async def verify_suspect_file(
 
     watermarked_file = None
     if extracted_code is not None:
-        watermarked_file = (
-            db.query(models.WatermarkedFile).filter_by(code=extracted_code).first()
-        )
+        match_query = db.query(models.WatermarkedFile).filter_by(code=extracted_code)
+        if current_user.role != models.ROLE_ADMIN:
+            match_query = match_query.join(models.Track).filter(models.Track.owner_id == current_user.id)
+        watermarked_file = match_query.first()
 
     detection = models.LeakDetection(
         watermarked_file_id=watermarked_file.id if watermarked_file else None,

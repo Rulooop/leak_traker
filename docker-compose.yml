@@ -23,7 +23,9 @@ services:
       ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
-      API_KEY: ${API_KEY:?la variable API_KEY es obligatoria, defínela en tu .env}
+      SECRET_KEY: ${SECRET_KEY:?la variable SECRET_KEY es obligatoria, defínela en tu .env}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-*}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     volumes:
