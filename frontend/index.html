@@ -77,9 +77,11 @@
     padding:7px 12px; border-radius:99px;
   }
 
-  /* ---------- pantalla de login / registro ---------- */
-  #appShell{ display:flex; flex-direction:column; flex:1; min-height:0; }
-  .auth-screen{
+  /* ---------- pantalla de login / registro ----------
+     Importante: el display:flex va con :not([hidden]), si no pisa al
+     atributo hidden (display:none) y se ven las dos pantallas a la vez. */
+  #appShell:not([hidden]){ display:flex; flex-direction:column; flex:1; min-height:0; }
+  .auth-screen:not([hidden]){
     flex:1; display:flex; align-items:center; justify-content:center; padding:20px;
   }
   .auth-card{ width:100%; max-width:380px; }
