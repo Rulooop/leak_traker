@@ -71,6 +71,7 @@ despliegue están funcionando de verdad, en producción. Contiene:
 - [x] Frontend propio (dashboard, alta de canciones, verificación, destinatarios, ajustes de conexión)
 - [x] Dashboard interactivo: chat de soporte con IA (Claude), explicador del watermark, gráfica de tendencia con tooltips, filtros por estado/fecha y animaciones
 - [x] Identidad visual propia: logo real, paleta de marca, navbar superior y sidebar reestilizado, dashboard en grid de 2 columnas con "Actividad reciente"
+- [x] Validación de la cabecera real del archivo subido (RIFF/WAVE) en `/watermark` y `/verify`, no solo la extensión `.wav`
 - [x] `docker-compose.yml` probado en local: los 3 servicios (`db`, `backend`, `frontend`) arrancan y responden correctamente
 - [x] Alertas por Telegram probadas de verdad (bot propio, `sendMessage` vía API de Telegram) — ver `backend/app/routes/webhook.py`
 - [x] Desplegado en internet: autoalojado desde la VM con Cloudflare Tunnel en `https://leaktracker.cloud`, con el túnel como servicio systemd persistente
@@ -121,13 +122,18 @@ system prompt instruye explícitamente al modelo a no revelar claves, tokens
 ni detalles internos de infraestructura, y si la clave no está configurada
 el endpoint falla con un error controlado en vez de romper el servidor.
 
+**Validación del contenido real del archivo subido.** `/watermark` y
+`/verify` comprueban la cabecera RIFF/WAVE de los bytes recibidos, no solo
+la extensión `.wav` del nombre de archivo — así un archivo renombrado con
+otra extensión se rechaza con 400 antes de tocar disco. Si el archivo pasa
+la cabecera pero el contenido está corrupto, el error también se controla
+con un 400 en vez de un 500 (`backend/app/files.py`,
+`validate_wav_signature`).
+
 ### Pendiente de securizar (para seguir mejorando)
 
 - No hay HTTPS en local (en producción sí, terminado en el borde de
   Cloudflare por el Tunnel — ver "Despliegue y comunicación" en el Stack).
-- No se valida el contenido real del archivo (solo la extensión `.wav`) —
-  alguien podría subir un archivo con otra extensión renombrado a `.wav`.
-  Se podría añadir una comprobación de las cabeceras reales del fichero.
 - El límite de rate limiting es por IP en memoria — en un despliegue con
   varias réplicas del backend, habría que centralizarlo (p.ej. con Redis).
 

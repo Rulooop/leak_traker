@@ -19,3 +19,14 @@ async def read_and_check_size(file: UploadFile, max_size: int = MAX_FILE_SIZE_BY
             )
         chunks.append(chunk)
     return b"".join(chunks)
+
+
+def validate_wav_signature(file_bytes: bytes) -> None:
+    """Comprueba que el contenido sea realmente un WAV (cabecera RIFF/WAVE),
+    no solo que el nombre del archivo termine en .wav. Alguien podría subir
+    cualquier otro archivo renombrado con esa extensión."""
+    if len(file_bytes) < 12 or file_bytes[0:4] != b"RIFF" or file_bytes[8:12] != b"WAVE":
+        raise HTTPException(
+            status_code=400,
+            detail="El archivo no es un WAV válido: la cabecera no coincide con el formato RIFF/WAVE.",
+        )

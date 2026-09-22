@@ -148,8 +148,12 @@ Todas estas medidas se probaron activamente (no solo se escribieron): se
 lanzó el servidor y se comprobó con peticiones reales que cada protección
 responde como debe (401 sin clave, 413 con archivo demasiado grande, etc.).
 
-Pendiente de securizar (detalle y por qué en el `README.md`): validar el
-contenido real del archivo subido (no solo la extensión `.wav`), HTTPS en
+- **Validación del contenido real del archivo subido**: `/watermark` y
+  `/verify` comprueban la cabecera RIFF/WAVE de los bytes recibidos, no solo
+  la extensión `.wav` del nombre; un archivo corrupto o renombrado se
+  rechaza con 400 antes de tocar disco.
+
+Pendiente de securizar (detalle y por qué en el `README.md`): HTTPS en
 local, y centralizar el rate limiting con Redis si algún día hay varias
 réplicas del backend.
 
@@ -230,7 +234,6 @@ construida:
 
 | Tarea | Prioridad | Notas |
 |---|---|---|
-| Validar el contenido real del archivo (no solo la extensión `.wav`) | Media | Alguien podría renombrar un archivo distinto como `.wav`; único pendiente con impacto de seguridad práctico ahora que la web es pública |
 | Escáner automático de filtraciones en fuentes externas | Media | Aplazado a propósito (no lo pedía el enunciado); si se retoma, versión mínima con 1-2 fuentes con API oficial (YouTube/SoundCloud) + job programado, en vez de scraping genérico |
 | HTTPS en local | Baja | En producción ya lo da Cloudflare Tunnel; en desarrollo local sigue sin HTTPS |
 | Centralizar el rate limiting si hay varias réplicas del backend | Baja | Está en memoria por IP; solo relevante si se escala a más de una instancia (con una, como ahora, no es urgente) |

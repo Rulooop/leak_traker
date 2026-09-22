@@ -1,12 +1,12 @@
 import tempfile
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Request, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
 from ..database import get_db
-from ..files import read_and_check_size
+from ..files import read_and_check_size, validate_wav_signature
 from ..rate_limit import limiter
 from ..security import require_api_key
 from ..watermark import extract_watermark
@@ -23,6 +23,7 @@ async def verify_suspect_file(
     db: Session = Depends(get_db),
 ):
     file_bytes = await read_and_check_size(file)
+    validate_wav_signature(file_bytes)
 
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
         tmp.write(file_bytes)
@@ -30,6 +31,11 @@ async def verify_suspect_file(
 
     try:
         extracted_code = extract_watermark(str(tmp_path))
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="El archivo tiene cabecera WAV pero el contenido está corrupto o no se pudo procesar.",
+        )
     finally:
         tmp_path.unlink(missing_ok=True)
 

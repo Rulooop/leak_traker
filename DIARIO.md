@@ -243,9 +243,19 @@ duplicados (arriba en la navbar y en el sidebar); me pidieron dejarlos solo
 una vez, así que la navbar se quedó solo con logo + iconos, y toda la
 navegación vive únicamente en el sidebar.
 
+## 22 de septiembre — Validar el contenido real del archivo subido
+
+`/watermark` y `/verify` solo comprobaban la extensión `.wav` del nombre de
+archivo, no el contenido. Añadido `validate_wav_signature()` en
+`backend/app/files.py`: comprueba la cabecera RIFF/WAVE de los bytes
+recibidos y rechaza con 400 cualquier cosa que no lo sea, antes de escribir
+nada a disco. También envuelto el embed/extract en un try/except para que un
+WAV con cabecera válida pero contenido corrupto dé 400 en vez de reventar
+con un 500. Probado en local contra el backend reconstruido: un archivo de
+texto renombrado a `.wav` se rechaza, un WAV real sigue procesándose bien.
+
 ## Pendiente para la próxima sesión
 
-- Revisar los puntos de la lista "Pendiente de securizar" del README.
 - Implementar el escáner automático de filtraciones en fuentes externas.
 - Añadir un login de verdad al frontend, para no depender de pegar la
   `API_KEY` a mano en "Ajustes".

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from .. import models, schemas
 from ..database import get_db
-from ..files import read_and_check_size
+from ..files import read_and_check_size, validate_wav_signature
 from ..rate_limit import limiter
 from ..security import require_api_key
 from ..watermark import embed_watermark
@@ -46,6 +46,7 @@ async def create_watermarked_file(
         raise HTTPException(status_code=400, detail="Por ahora solo se admiten archivos .wav")
 
     file_bytes = await read_and_check_size(file)
+    validate_wav_signature(file_bytes)
 
     track = models.Track(title=title, artist=artist)
     db.add(track)
@@ -60,7 +61,15 @@ async def create_watermarked_file(
     code = _generate_unique_code(db)
     output_path = UPLOAD_DIR / f"watermarked_{track.id}_{recipient_id}_{code}.wav"
 
-    embed_watermark(str(input_path), code, str(output_path))
+    try:
+        embed_watermark(str(input_path), code, str(output_path))
+    except Exception:
+        input_path.unlink(missing_ok=True)
+        output_path.unlink(missing_ok=True)
+        raise HTTPException(
+            status_code=400,
+            detail="El archivo tiene cabecera WAV pero el contenido está corrupto o no se pudo procesar.",
+        )
 
     watermarked_file = models.WatermarkedFile(
         track_id=track.id,
