@@ -282,6 +282,13 @@ y un botón de cerrar sesión, en vez del campo para pegar la API key a mano.
 Probado en Docker: registro, login, un usuario normal no ve las canciones ni
 destinatarios de otro, la cuenta admin sí ve las de todos.
 
+## 22 de septiembre — Fondo animado y transición en el login
+
+Barras de onda pulsando de fondo en la pantalla de login/registro (mismo
+lenguaje visual que la waveform del dashboard), difuminadas arriba/abajo con
+una máscara para no competir con la tarjeta. Al iniciar sesión, el login se
+desvanece y el dashboard aparece con un fundido en vez de un cambio brusco.
+
 ## Pendiente para la próxima sesión
 
 - Implementar el escáner automático de filtraciones en fuentes externas.
