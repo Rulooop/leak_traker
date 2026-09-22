@@ -80,11 +80,38 @@
   /* ---------- pantalla de login / registro ----------
      Importante: el display:flex va con :not([hidden]), si no pisa al
      atributo hidden (display:none) y se ven las dos pantallas a la vez. */
-  #appShell:not([hidden]){ display:flex; flex-direction:column; flex:1; min-height:0; }
+  #appShell:not([hidden]){
+    display:flex; flex-direction:column; flex:1; min-height:0;
+    opacity:0; transition:opacity 0.32s ease;
+  }
+  #appShell.visible{ opacity:1; }
   .auth-screen:not([hidden]){
     flex:1; display:flex; align-items:center; justify-content:center; padding:20px;
+    position:relative; overflow:hidden;
+    opacity:1; transition:opacity 0.28s ease;
   }
-  .auth-card{ width:100%; max-width:380px; }
+  .auth-screen.leaving{ opacity:0; }
+  .auth-bg{
+    position:absolute; inset:0; overflow:hidden; pointer-events:none;
+    display:flex; align-items:center; justify-content:center;
+    opacity:0.45;
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 30%, #000 70%, transparent);
+    mask-image: linear-gradient(to bottom, transparent, #000 30%, #000 70%, transparent);
+  }
+  .auth-bg svg{ width:100%; height:240px; display:block; }
+  .wave-bar{
+    transform-box: fill-box; transform-origin: center;
+    animation: waveMotion 2.6s ease-in-out infinite;
+  }
+  @keyframes waveMotion{
+    0%, 100%{ transform:scaleY(0.35); }
+    50%{ transform:scaleY(1); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .wave-bar{ animation:none; }
+    #appShell, .auth-screen{ transition:none; }
+  }
+  .auth-card{ width:100%; max-width:380px; position:relative; z-index:1; }
   .auth-brand{ display:flex; align-items:center; gap:10px; justify-content:center; margin-bottom:24px; }
   .auth-toggle{ text-align:center; margin-top:16px; font-size:13px; color:var(--dim); }
   .auth-toggle button{ background:none; border:none; color:var(--accent); font-weight:600; padding:0; cursor:pointer; }
@@ -694,9 +721,24 @@ async function sendChatMessage(){
 /* ---------- login / registro ---------- */
 let authMode = 'login';
 
+/* Fondo animado de la pantalla de login: barras de onda, el mismo lenguaje
+   visual que la forma de onda del dashboard, alusivo al watermark de audio. */
+function authWaveformSVG(){
+  const n = 56;
+  const bars = [];
+  for(let i = 0; i < n; i++){
+    const h = 10 + Math.round(26 * Math.abs(Math.sin(i * 0.35)) + (i % 5) * 2);
+    const x = 4 + i * 10;
+    const delay = ((i * 0.09) % 2.6).toFixed(2);
+    bars.push(`<rect class="wave-bar" x="${x}" y="${60 - h / 2}" width="5" height="${h}" rx="2" fill="var(--accent)" style="animation-delay:${delay}s"/>`);
+  }
+  return `<svg viewBox="0 0 ${4 + n * 10} 120" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">${bars.join('')}</svg>`;
+}
+
 function renderAuth(){
   const el = document.getElementById('authScreen');
   el.innerHTML = `
+    <div class="auth-bg">${authWaveformSVG()}</div>
     <div class="card auth-card">
       <div class="auth-brand">
         <img src="assets/logo-icon.png" alt="LeakTracker" style="height:30px;" />
@@ -754,21 +796,31 @@ async function applySession(token){
   state.token = token;
   localStorage.setItem('lt_token', token);
   state.currentUser = await api('/auth/me');
-  showApp();
+
+  const authEl = document.getElementById('authScreen');
+  authEl.classList.add('leaving');
+  setTimeout(() => {
+    authEl.hidden = true;
+    authEl.classList.remove('leaving');
+    showApp();
+  }, 280);
 }
 
 function logout(){
   state.token = '';
   state.currentUser = null;
   localStorage.removeItem('lt_token');
+  document.getElementById('appShell').classList.remove('visible');
   showAuth();
 }
 
 function showApp(){
+  const shell = document.getElementById('appShell');
   document.getElementById('authScreen').hidden = true;
-  document.getElementById('appShell').hidden = false;
+  shell.hidden = false;
   checkConnection();
   navigate('dashboard');
+  requestAnimationFrame(() => shell.classList.add('visible'));
 }
 
 function showAuth(){
